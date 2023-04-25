@@ -1,0 +1,23 @@
+dry_run: false
+repos: 
+- repository: https://github.com/app-sre/terraform-repo-executor
+  name: foo-foo
+  ref: d82b3cb292d91ec2eb26fc282d751555088819f3
+  project_path: test/plan_a
+  delete: true
+  account:
+    name: aws-account-a
+    uid: 123456789012
+    secret:
+      path: terraform/app-sre/prod-network
+      version: 4
+- repository: https://github.com/app-sre/terraform-repo-executor
+  name: bar-bar
+  ref: 47ef09135da2d158ede78dbbe8c59de1775a274c
+  project_path: test/plan_b
+  delete: false
+  account:
+    name: aws-account-b
+    uid: 123456789099
+    secret:
+      path: terraform/app-sre/stage-network
