@@ -10,7 +10,6 @@ vault server -dev -dev-root-token-id=root &
 
 vault secrets enable -version=2 -path=terraform kv
 vault kv put -mount=terraform app-sre/prod-network  name=linguinie
-vault kv put -mount=terraform app-sre/stage-network  name=zitti
 vault policy write tf-executor policy.hcl
 vault auth enable approle
 vault write auth/approle/role/tf-executor token_num_uses=999 policies="tf-executor, default"
