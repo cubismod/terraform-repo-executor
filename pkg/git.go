@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-func (e *Executor) cloneRepo(repo Target) error {
-	authUrl, err := e.getAuthUrl(repo.Url)
+func (e *Executor) cloneRepo() error {
+	authUrl, err := e.getAuthUrl(e.TfRepoCfg.Url)
 	if err != nil {
 		return err
 	}
@@ -17,9 +17,9 @@ func (e *Executor) cloneRepo(repo Target) error {
 		// clone repo with specified name and checkout specified ref
 		"git clone %s %s && cd %s && git checkout %s",
 		authUrl,
-		repo.Name,
-		repo.Name,
-		repo.Ref,
+		e.TfRepoCfg.Name,
+		e.TfRepoCfg.Name,
+		e.TfRepoCfg.Ref,
 	)}
 	_, err = executeCommand(e.workdir, "/bin/sh", args)
 	if err != nil {
