@@ -6,17 +6,17 @@ An application for performing terraform operations of target git repositories.
 
 ## Environment Variables
 ### Required
-* GITLAB_USERNAME
-* GITLAB_TOKEN
-* VAULT_ADDR
-* VAULT_ROLE_ID
-* VAULT_SECRET_ID
+* `GITLAB_USERNAME`
+* `GITLAB_TOKEN`
+* `VAULT_ADDR`
+* `VAULT_ROLE_ID`
+* `VAULT_SECRET_ID`
 ### Optional
-* CONFIG_FILE - defaults to `/config.yaml`
-* WORKDIR - defaults to `/tf-repo`
+* `CONFIG_FILE` - defaults to `/config.yaml`
+* `WORKDIR` - defaults to `/tf-repo`
 
-## YAML
-The application processes the yaml defined at `CONFIG_FILE` for determining targets. The yaml attributes are as follows:
+## Config file
+The application processes the yaml/json defined at `CONFIG_FILE` for determining targets. The attributes are as follows:
 
 | Attribute                | Type    | Description                                                                                                       |
 |--------------------------|---------|-------------------------------------------------------------------------------------------------------------------|

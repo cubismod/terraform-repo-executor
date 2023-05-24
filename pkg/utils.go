@@ -3,7 +3,6 @@ package pkg
 import (
 	"bytes"
 	"errors"
-	"log"
 	"os"
 	"os/exec"
 
@@ -13,10 +12,11 @@ import (
 func processConfig(cfgPath string) (*TfRepo, error) {
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
-		log.Fatalln(err)
+		return nil, err
 	}
 
 	var cfg TfRepo
+	// internally yaml.Unmarshal will use json.Unmarshal if it detects json format
 	err = yaml.Unmarshal(raw, &cfg)
 	if err != nil {
 		return nil, err
