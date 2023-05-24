@@ -24,6 +24,8 @@ objects:
           env:
           - name: REPO_TARGET_CONFIG
             value: ${REPO_TARGET_CONFIG}
+          - name: REPO_TARGET_CONFIG_PATH
+            value: ${REPO_TARGET_CONFIG_PATH}
           resources:
             requests:
               memory: 10Mi
