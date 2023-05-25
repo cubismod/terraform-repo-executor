@@ -7,18 +7,18 @@ import (
 )
 
 type TfRepo struct {
-	Name   string      `yaml:"name"`
-	Url    string      `yaml:"repository"`
-	Path   string      `yaml:"project_path"`
-	Ref    string      `yaml:"ref"`
-	Delete bool        `yaml:"delete"`
-	DryRun bool        `yaml:"dry_run"`
-	Secret VaultSecret `yaml:"secret"`
+	Name   string      `yaml:"name" json:"name"`
+	Url    string      `yaml:"repository" json:"repository"`
+	Path   string      `yaml:"project_path" json:"project_path"`
+	Ref    string      `yaml:"ref" json:"ref"`
+	Delete bool        `yaml:"delete" json:"delete"`
+	DryRun bool        `yaml:"dry_run" json:"dry_run"`
+	Secret VaultSecret `yaml:"secret" json:"secret"`
 }
 
 type VaultSecret struct {
-	Path    string `yaml:"path"`
-	Version int    `yaml:"version"`
+	Path    string `yaml:"path" json:"path"`
+	Version int    `yaml:"version" json:"version"`
 }
 
 type Executor struct {

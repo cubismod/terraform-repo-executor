@@ -1,0 +1,12 @@
+{
+    "name": "foobar",
+    "repository": "https://github.com/app-sre/terraform-repo-executor",
+    "project_path": "test/plan_a",
+    "ref": "d82b3cb292d91ec2eb26fc282d751555088819f3", 
+    "dry_run": true,
+    "delete": false,
+    "secret": {
+        "path": "terraform/app-sre/prod-network",
+        "version": 4
+    }
+}
