@@ -20,12 +20,9 @@ objects:
           command: ["/bin/sh", "-c"]
           args:
           - |
-            echo ${REPO_TARGET_CONFIG} > ${REPO_TARGET_CONFIG_PATH}
-          env:
-          - name: REPO_TARGET_CONFIG
-            value: ${REPO_TARGET_CONFIG}
-          - name: REPO_TARGET_CONFIG_PATH
-            value: ${REPO_TARGET_CONFIG_PATH}
+            cat > ${REPO_TARGET_CONFIG_PATH} <<EOF
+            ${REPO_TARGET_CONFIG}
+            EOF
           resources:
             requests:
               memory: 10Mi
@@ -77,7 +74,7 @@ parameters:
 - name: IMAGE
   value: quay.io/app-sre/terraform-repo-executor
   displayName: terraform repo executor image
-  description: terraform-repo-executor docker image. Defaults to quay.io/app-sre/terraform-rpeo-executor
+  description: terraform-repo-executor docker image. Defaults to quay.io/app-sre/terraform-repo-executor
 - name: IMAGE_TAG
   value: latest
   displayName: terraform-repo-executor version
