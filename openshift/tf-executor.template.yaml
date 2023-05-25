@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: Template
+metadata:
+  name: terraform-repo-executor
+objects:
+- apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: terraform-repo-executor
+  spec:
+    template:
+      spec:
+        serviceAccountName: terraform-repo-executor
+        restartPolicy: Never
+        initContainers:
+        - name: config-init
+          image: ${BUSYBOX_IMAGE}:${BUSYBOX_IMAGE_TAG}
+          imagePullPolicy: ${BUSYBOX_IMAGE_PULL_POLICY}
+          command: ["/bin/sh", "-c"]
+          args:
+          - |
+            cat > ${REPO_TARGET_CONFIG_PATH} <<EOF
+            ${REPO_TARGET_CONFIG}
+            EOF
+          resources:
+            requests:
+              memory: 10Mi
+              cpu: 15m
+            limits:
+              memory: 20Mi
+              cpu: 25m
+        containers:
+        - name: terraform-repo-executor
+          image: ${IMAGE}:${IMAGE_TAG}
+          env:
+          - name: CONFIG_FILE
+            value: ${REPO_TARGET_CONFIG_PATH}
+          - name: WORKDIR
+            value: ${WORKDIR}
+          - name: VAULT_ADDR
+            valueFrom:
+              secretKeyRef:
+                key: addr
+                name: ${TF_EXECUTOR_SECRET_NAME}
+          - name: VAULT_ROLE_ID
+            valueFrom:
+              secretKeyRef:
+                key: role.id
+                name: ${TF_EXECUTOR_SECRET_NAME}
+          - name: VAULT_SECRET_ID
+            valueFrom:
+              secretKeyRef:
+                key: secret.id
+                name: ${TF_EXECUTOR_SECRET_NAME}
+          - name: GITLAB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: gitlab.username
+                name: ${TF_EXECUTOR_SECRET_NAME}
+          - name: GITLAB_TOKEN
+            valueFrom:
+              secretKeyRef:
+                key: gitlab.token
+                name: ${TF_EXECUTOR_SECRET_NAME}
+          resources:
+            requests:
+              memory: ${MEMORY_REQUESTS}
+              cpu: ${CPU_REQUESTS}
+            limits:
+              memory: ${MEMORY_LIMIT}
+              cpu: ${CPU_LIMIT}
+parameters:
+- name: IMAGE
+  value: quay.io/app-sre/terraform-repo-executor
+  displayName: terraform repo executor image
+  description: terraform-repo-executor docker image. Defaults to quay.io/app-sre/terraform-repo-executor
+- name: IMAGE_TAG
+  value: latest
+  displayName: terraform-repo-executor version
+  description: terraform-repo-executor version which defaults to latest
+- name: BUSYBOX_IMAGE
+  value: quay.io/app-sre/ubi8-ubi-minimal
+- name: BUSYBOX_IMAGE_TAG
+  value: latest
+- name: BUSYBOX_IMAGE_PULL_POLICY
+  value: Always
+- name: MEMORY_REQUESTS
+  value: 150Mi
+- name: MEMORY_LIMIT
+  value: 250Mi
+- name: CPU_REQUESTS
+  value: 100m
+- name: CPU_LIMIT
+  value: 200m
+- name: REPO_TARGET_CONFIG # supplied by qr int
+  value: ''
+- name: REPO_TARGET_CONFIG_PATH
+  value: '/config.json'
+- name: WORKDIR
+  value: '/tf-repo'
+- name: TF_EXECUTOR_SECRET_NAME
+  value: tf-repo-executor-creds
