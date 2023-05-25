@@ -96,7 +96,7 @@ parameters:
 - name: REPO_TARGET_CONFIG # supplied by qr int
   value: ''
 - name: REPO_TARGET_CONFIG_PATH
-  value: '/config.yaml'
+  value: '/config.json'
 - name: WORKDIR
   value: '/tf-repo'
 - name: TF_EXECUTOR_SECRET_NAME
