@@ -7,3 +7,7 @@ delete: false
 secret:
   path: terraform/app-sre/prod-network
   version: 4
+modules:
+- name: foo-bar
+  url: https://github.com/app-sre/terraform-repo-modules
+  ref: 364652b72c6386d7515d37abd168cde85b1d1af7

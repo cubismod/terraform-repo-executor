@@ -7,18 +7,25 @@ import (
 )
 
 type TfRepo struct {
-	Name   string      `yaml:"name" json:"name"`
-	Url    string      `yaml:"repository" json:"repository"`
-	Path   string      `yaml:"project_path" json:"project_path"`
-	Ref    string      `yaml:"ref" json:"ref"`
-	Delete bool        `yaml:"delete" json:"delete"`
-	DryRun bool        `yaml:"dry_run" json:"dry_run"`
-	Secret VaultSecret `yaml:"secret" json:"secret"`
+	Name    string      `yaml:"name" json:"name"`
+	Url     string      `yaml:"repository" json:"repository"`
+	Path    string      `yaml:"project_path" json:"project_path"`
+	Ref     string      `yaml:"ref" json:"ref"`
+	Delete  bool        `yaml:"delete" json:"delete"`
+	DryRun  bool        `yaml:"dry_run" json:"dry_run"`
+	Secret  VaultSecret `yaml:"secret" json:"secret"`
+	Modules []Module    `yaml:"modules" json:"modules"`
 }
 
 type VaultSecret struct {
 	Path    string `yaml:"path" json:"path"`
 	Version int    `yaml:"version" json:"version"`
+}
+
+type Module struct {
+	Name string `yaml:"name" json:"name"`
+	Url  string `yaml:"url" json:"url"`
+	Ref  string `yaml:"ref" json:"ref"`
 }
 
 type Executor struct {
@@ -78,7 +85,7 @@ type errObj struct {
 
 // performs all repo-specific operations
 func (e *Executor) execute() error {
-	err := e.cloneRepo()
+	err := e.cloneRepo(e.TfRepoCfg.Url, e.TfRepoCfg.Name, e.TfRepoCfg.Ref, e.workdir)
 	if err != nil {
 		return err
 	}
@@ -97,6 +104,13 @@ func (e *Executor) execute() error {
 	err = e.generateTfVarsFile(TfBackend)
 	if err != nil {
 		return err
+	}
+
+	if len(e.TfRepoCfg.Modules) > 0 {
+		err = e.getModules()
+		if err != nil {
+			return err
+		}
 	}
 
 	err = e.processTfPlan()

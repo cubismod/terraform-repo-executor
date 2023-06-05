@@ -7,8 +7,9 @@ import (
 	"strings"
 )
 
-func (e *Executor) cloneRepo() error {
-	authUrl, err := e.getAuthUrl(e.TfRepoCfg.Url)
+// currently supports gitlab repositories
+func (e *Executor) cloneRepo(url, name, ref, dir string) error {
+	authUrl, err := e.getAuthUrl(url)
 	if err != nil {
 		return err
 	}
@@ -17,11 +18,11 @@ func (e *Executor) cloneRepo() error {
 		// clone repo with specified name and checkout specified ref
 		"git clone %s %s && cd %s && git checkout %s",
 		authUrl,
-		e.TfRepoCfg.Name,
-		e.TfRepoCfg.Name,
-		e.TfRepoCfg.Ref,
+		name,
+		name,
+		ref,
 	)}
-	_, err = executeCommand(e.workdir, "/bin/sh", args)
+	_, err = executeCommand(dir, "/bin/sh", args)
 	if err != nil {
 		return errors.New(strings.ReplaceAll(err.Error(), e.glToken, "[REDACTED]"))
 	}

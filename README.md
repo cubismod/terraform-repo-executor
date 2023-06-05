@@ -28,7 +28,14 @@ The application processes the yaml/json defined at `CONFIG_FILE` for determining
 | `delete`           | boolean | If `true`, the application will execute the terraform action with the `destroy` flag set                |
 | `secret`     | object  | Vault secret where the terraform credentials for specified account are stored.                        |
 | &emsp;`path` | string  | Path to the secret in the vault. For KV v2, do not include the hidden `data` path segment                                                                               |
-| &emsp;`version` | integer | Version of the secret to be used.                                                                              |
+| &emsp;`version` | integer | Version of the secret to b used.                                                                   |
+| `modules`     | list(object)  | List of dependency modules to retrieve and package locally when processing repo target.                        |
+| &emsp;`name` | string | Name of module. This is utilized when specifying `source` in the tf file. **unique within a tf-repo module list**             |
+| &emsp;`url` | string | Url of git repo where module is defined.                |
+| &emsp;`ref`              | string  | Commit sha in the repository to be targeted.                           |
+
+
+
 
 ### Example
 ``` 
@@ -41,4 +48,8 @@ delete: false
 secret:
   path: terraform/creds/prod-acount
   version: 4
+modules:
+  name: foo
+  url: https://gitlab.myinstance.com/some-gl-group/my-modules
+  ref: 44s3b3cb292d91ec2eb26fc282d75155508881cce
 ```
