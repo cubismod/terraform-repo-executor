@@ -114,26 +114,6 @@ func (e *Executor) generateTfVarsFile(creds TfBackend) error {
 	return nil
 }
 
-func (e *Executor) getModules() error {
-	// create a modules directory within the targetted tf repo directory
-	moduleDir := fmt.Sprintf("%s/%s/%s/remote-modules", e.workdir, e.TfRepoCfg.Name, e.TfRepoCfg.Path)
-	_, err := executeCommand(
-		"/",
-		"mkdir",
-		[]string{"-p", moduleDir},
-	)
-	if err != nil {
-		return err
-	}
-
-	for _, module := range e.TfRepoCfg.Modules {
-		if err = e.cloneRepo(module.Url, module.Name, module.Ref, moduleDir); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // executes target tf plan
 func (e *Executor) processTfPlan() error {
 	dir := fmt.Sprintf("%s/%s/%s", e.workdir, e.TfRepoCfg.Name, e.TfRepoCfg.Path)

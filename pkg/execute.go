@@ -7,14 +7,13 @@ import (
 )
 
 type TfRepo struct {
-	Name    string      `yaml:"name" json:"name"`
-	Url     string      `yaml:"repository" json:"repository"`
-	Path    string      `yaml:"project_path" json:"project_path"`
-	Ref     string      `yaml:"ref" json:"ref"`
-	Delete  bool        `yaml:"delete" json:"delete"`
-	DryRun  bool        `yaml:"dry_run" json:"dry_run"`
-	Secret  VaultSecret `yaml:"secret" json:"secret"`
-	Modules []Module    `yaml:"modules" json:"modules"`
+	Name   string      `yaml:"name" json:"name"`
+	Url    string      `yaml:"repository" json:"repository"`
+	Path   string      `yaml:"project_path" json:"project_path"`
+	Ref    string      `yaml:"ref" json:"ref"`
+	Delete bool        `yaml:"delete" json:"delete"`
+	DryRun bool        `yaml:"dry_run" json:"dry_run"`
+	Secret VaultSecret `yaml:"secret" json:"secret"`
 }
 
 type VaultSecret struct {
@@ -22,17 +21,9 @@ type VaultSecret struct {
 	Version int    `yaml:"version" json:"version"`
 }
 
-type Module struct {
-	Name string `yaml:"name" json:"name"`
-	Url  string `yaml:"url" json:"url"`
-	Ref  string `yaml:"ref" json:"ref"`
-}
-
 type Executor struct {
 	TfRepoCfg     *TfRepo
 	vaultClient   *vault.Client
-	glUsername    string
-	glToken       string
 	workdir       string
 	vaultAddr     string
 	vaultRoleId   string
@@ -41,8 +32,6 @@ type Executor struct {
 
 func Run(cfgPath,
 	workdir,
-	glUsername,
-	glToken,
 	vaultAddr,
 	roleId,
 	secretId string) error {
@@ -63,8 +52,6 @@ func Run(cfgPath,
 	e := &Executor{
 		TfRepoCfg:     targetRepo,
 		vaultClient:   initVaultClient(vaultAddr, roleId, secretId),
-		glUsername:    glUsername,
-		glToken:       glToken,
 		workdir:       workdir,
 		vaultAddr:     vaultAddr,
 		vaultRoleId:   roleId,
@@ -85,7 +72,7 @@ type errObj struct {
 
 // performs all repo-specific operations
 func (e *Executor) execute() error {
-	err := e.cloneRepo(e.TfRepoCfg.Url, e.TfRepoCfg.Name, e.TfRepoCfg.Ref, e.workdir)
+	err := e.cloneRepo()
 	if err != nil {
 		return err
 	}
@@ -104,13 +91,6 @@ func (e *Executor) execute() error {
 	err = e.generateTfVarsFile(TfBackend)
 	if err != nil {
 		return err
-	}
-
-	if len(e.TfRepoCfg.Modules) > 0 {
-		err = e.getModules()
-		if err != nil {
-			return err
-		}
 	}
 
 	err = e.processTfPlan()

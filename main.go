@@ -20,16 +20,12 @@ const (
 func main() {
 	cfgPath := getEnvOrDefault(CONFIG_FILE, "/config.yaml")
 	workdir := getEnvOrDefault(WORKDIR, "/tf-repo")
-	glUsername := getEnvOrError(GL_USERNAME)
-	glToken := getEnvOrError(GL_TOKEN)
 	vaultAddr := getEnvOrError(VAULT_ADDR)
 	roleId := getEnvOrError(VAULT_ROLE_ID)
 	secretId := getEnvOrError(VAULT_SECRET_ID)
 
 	err := pkg.Run(cfgPath,
 		workdir,
-		glUsername,
-		glToken,
 		vaultAddr,
 		roleId,
 		secretId,
