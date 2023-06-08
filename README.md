@@ -12,7 +12,6 @@ An application for performing terraform operations of target git repositories.
 ### Optional
 * `CONFIG_FILE` - defaults to `/config.yaml`
 * `WORKDIR` - defaults to `/tf-repo`
-* `INTERNAL_GIT_CA_PATH` - if using a custom CA for cloning git repos
 
 ## Config file
 The application processes the yaml/json defined at `CONFIG_FILE` for determining targets. The attributes are as follows:
