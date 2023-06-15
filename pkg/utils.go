@@ -3,6 +3,7 @@ package pkg
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -37,4 +38,20 @@ func executeCommand(dir, command string, args []string) (string, error) {
 		return stdout.String(), errors.New(stderr.String())
 	}
 	return stdout.String(), nil
+}
+
+func (r Repo) cloneRepo(workdir string) error {
+	args := []string{"-c", fmt.Sprintf(
+		// clone repo with specified name and checkout specified ref
+		"git clone %s %s && cd %s && git checkout %s",
+		r.Url,
+		r.Name,
+		r.Name,
+		r.Ref,
+	)}
+	_, err := executeCommand(workdir, "/bin/sh", args)
+	if err != nil {
+		return err
+	}
+	return nil
 }

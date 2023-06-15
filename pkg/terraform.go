@@ -27,7 +27,7 @@ type TfBackend struct {
 
 // generates a .tfbackend file to be utilized as partial backend config input file
 // the generated backend file will provide credentials for an s3 backend config
-func (e *Executor) generateBackendFile(creds TfBackend) error {
+func (e *Executor) generateBackendFile(creds TfBackend, repo Repo) error {
 	backendTemplate := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
 		{{- "\n"}}region = "{{.Region}}"
@@ -42,8 +42,8 @@ func (e *Executor) generateBackendFile(creds TfBackend) error {
 	f, err := os.Create(
 		fmt.Sprintf("%s/%s/%s/%s",
 			e.workdir,
-			e.TfRepoCfg.Name,
-			e.TfRepoCfg.Path,
+			repo.Name,
+			repo.Path,
 			BACKEND_FILE,
 		),
 	)
@@ -72,7 +72,7 @@ type TfVars struct {
 // generates .tfvars file to be utilized for input variables to a specific tf plan
 // the generated .tfvars file will provide credentials for the aws and vault providers
 // of the plan
-func (e *Executor) generateTfVarsFile(creds TfBackend) error {
+func (e *Executor) generateTfVarsFile(creds TfBackend, repo Repo) error {
 	varsTemplate := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
 		{{- "\n"}}region = "{{.Region}}"
@@ -88,8 +88,8 @@ func (e *Executor) generateTfVarsFile(creds TfBackend) error {
 	f, err := os.Create(
 		fmt.Sprintf("%s/%s/%s/%s",
 			e.workdir,
-			e.TfRepoCfg.Name,
-			e.TfRepoCfg.Path,
+			repo.Name,
+			repo.Path,
 			TFVARS_FILE,
 		),
 	)
@@ -115,14 +115,14 @@ func (e *Executor) generateTfVarsFile(creds TfBackend) error {
 }
 
 // executes target tf plan
-func (e *Executor) processTfPlan() error {
-	dir := fmt.Sprintf("%s/%s/%s", e.workdir, e.TfRepoCfg.Name, e.TfRepoCfg.Path)
+func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
+	dir := fmt.Sprintf("%s/%s/%s", e.workdir, repo.Name, repo.Path)
 	tf, err := tfexec.NewTerraform(dir, "terraform")
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Initializing terraform config for %s\n", e.TfRepoCfg.Name)
+	log.Printf("Initializing terraform config for %s\n", repo.Name)
 	err = tf.Init(
 		context.Background(),
 		tfexec.BackendConfig(BACKEND_FILE),
@@ -135,23 +135,23 @@ func (e *Executor) processTfPlan() error {
 	tf.SetStdout(&stdout)
 	tf.SetStderr(&stderr)
 
-	if e.TfRepoCfg.DryRun {
-		log.Println(fmt.Sprintf("Performing terraform plan for %s", e.TfRepoCfg.Name))
+	if dryRun {
+		log.Println(fmt.Sprintf("Performing terraform plan for %s", repo.Name))
 		_, err = tf.Plan(
 			context.Background(),
-			tfexec.Destroy(e.TfRepoCfg.Delete),
+			tfexec.Destroy(repo.Delete),
 			tfexec.VarFile(TFVARS_FILE),
 		)
 	} else {
 		// tf.exec.Destroy flag cannot be passed to tf.Apply in same fashion as above Plan() logic
-		if e.TfRepoCfg.Delete {
-			log.Println(fmt.Sprintf("Performing terraform destroy for %s", e.TfRepoCfg.Name))
+		if repo.Delete {
+			log.Println(fmt.Sprintf("Performing terraform destroy for %s", repo.Name))
 			err = tf.Destroy(
 				context.Background(),
 				tfexec.VarFile(TFVARS_FILE),
 			)
 		} else {
-			log.Println(fmt.Sprintf("Performing terraform apply for %s", e.TfRepoCfg.Name))
+			log.Println(fmt.Sprintf("Performing terraform apply for %s", repo.Name))
 			err = tf.Apply(
 				context.Background(),
 				tfexec.VarFile(TFVARS_FILE),
@@ -163,7 +163,7 @@ func (e *Executor) processTfPlan() error {
 		return errors.New(stderr.String())
 	}
 
-	log.Printf("Output for %s\n", e.TfRepoCfg.Name)
+	log.Printf("Output for %s\n", repo.Name)
 	log.Println(stdout.String())
 
 	return nil

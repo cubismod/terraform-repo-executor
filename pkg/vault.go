@@ -44,45 +44,46 @@ const (
 )
 
 // expects appSRE standardized terraform secret keys to exist
+// returns creds specific to account specified in repo target to support aws backend/provider
 // NOTE: this logic is specific to a KV V2 secret engine
-func (e *Executor) getVaultSecrets() (TfBackend, error) {
+func (e *Executor) getVaultSecrets(secretInfo VaultSecret) (TfBackend, error) {
 	// api calls to vault kv v2 secret engines expect 'data' path between root (secret engine name)
 	// and remaining path
-	sliced := strings.SplitN(e.TfRepoCfg.Secret.Path, "/", 2)
+	sliced := strings.SplitN(secretInfo.Path, "/", 2)
 	if len(sliced) < 2 {
-		return TfBackend{}, fmt.Errorf("Invalid vault path: %s", e.TfRepoCfg.Secret.Path)
+		return TfBackend{}, fmt.Errorf("Invalid vault path: %s", secretInfo.Path)
 	}
 	formattedPath := fmt.Sprintf("%s/data/%s", sliced[0], sliced[1])
 
-	var secret *vault.Secret
+	var rawSecret *vault.Secret
 	var err error
 	// version is optional in config yaml
 	// default behavior when omitted will be to use latest
-	if e.TfRepoCfg.Secret.Version != 0 {
-		secret, err = e.vaultClient.Logical().ReadWithData(formattedPath, map[string][]string{
-			"version": {fmt.Sprintf("%d", e.TfRepoCfg.Secret.Version)},
+	if secretInfo.Version != 0 {
+		rawSecret, err = e.vaultClient.Logical().ReadWithData(formattedPath, map[string][]string{
+			"version": {fmt.Sprintf("%d", secretInfo.Version)},
 		})
 	} else {
-		secret, err = e.vaultClient.Logical().Read(formattedPath)
+		rawSecret, err = e.vaultClient.Logical().Read(formattedPath)
 	}
 
 	if err != nil {
 		return TfBackend{}, err
 	}
-	if secret == nil {
-		return TfBackend{}, fmt.Errorf("No secret found at specified path: %s", e.TfRepoCfg.Secret.Path)
+	if rawSecret == nil {
+		return TfBackend{}, fmt.Errorf("No secret found at specified path: %s", secretInfo.Path)
 	}
-	if len(secret.Data) == 0 {
-		return TfBackend{}, fmt.Errorf("No key-values stored within secret at path: %s", e.TfRepoCfg.Secret.Path)
+	if len(rawSecret.Data) == 0 {
+		return TfBackend{}, fmt.Errorf("No key-values stored within secret at path: %s", secretInfo.Path)
 	}
-	mappedSecret, ok := secret.Data["data"].(map[string]interface{})
+	mappedSecret, ok := rawSecret.Data["data"].(map[string]interface{})
 	if !ok {
-		return TfBackend{}, fmt.Errorf("Failed to process data for secret at path: %s", e.TfRepoCfg.Secret.Path)
+		return TfBackend{}, fmt.Errorf("Failed to process data for secret at path: %s", secretInfo.Path)
 	}
 
 	for _, key := range []string{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_REGION} {
 		if mappedSecret[key] == nil {
-			return TfBackend{}, fmt.Errorf("Failed to retrieve %s for secret at path: %s", key, e.TfRepoCfg.Secret.Path)
+			return TfBackend{}, fmt.Errorf("Failed to retrieve %s for secret at path: %s", key, secretInfo.Path)
 		}
 	}
 

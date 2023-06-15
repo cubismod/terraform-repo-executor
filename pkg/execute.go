@@ -2,17 +2,22 @@ package pkg
 
 import (
 	"fmt"
+	"log"
 
 	vault "github.com/hashicorp/vault/api"
 )
 
 type TfRepo struct {
+	DryRun bool   `yaml:"dry_run" json:"dry_run"`
+	Repos  []Repo `yaml:"repos" json:"repos"`
+}
+
+type Repo struct {
 	Name   string      `yaml:"name" json:"name"`
 	Url    string      `yaml:"repository" json:"repository"`
 	Path   string      `yaml:"project_path" json:"project_path"`
 	Ref    string      `yaml:"ref" json:"ref"`
 	Delete bool        `yaml:"delete" json:"delete"`
-	DryRun bool        `yaml:"dry_run" json:"dry_run"`
 	Secret VaultSecret `yaml:"secret" json:"secret"`
 }
 
@@ -22,7 +27,6 @@ type VaultSecret struct {
 }
 
 type Executor struct {
-	TfRepoCfg     *TfRepo
 	vaultClient   *vault.Client
 	workdir       string
 	vaultAddr     string
@@ -44,13 +48,12 @@ func Run(cfgPath,
 		return err
 	}
 
-	targetRepo, err := processConfig(cfgPath)
+	cfg, err := processConfig(cfgPath)
 	if err != nil {
 		return err
 	}
 
 	e := &Executor{
-		TfRepoCfg:     targetRepo,
 		vaultClient:   initVaultClient(vaultAddr, roleId, secretId),
 		workdir:       workdir,
 		vaultAddr:     vaultAddr,
@@ -58,9 +61,18 @@ func Run(cfgPath,
 		vaultSecretId: secretId,
 	}
 
-	err = e.execute()
-	if err != nil {
-		return err
+	errCounter := 0
+	for _, repo := range cfg.Repos {
+		err = e.execute(repo, cfg.DryRun)
+		if err != nil {
+			log.Printf("Error executing terraform operations for: %s\n", repo.Name)
+			log.Println(err)
+			errCounter++
+		}
+	}
+
+	if errCounter > 0 {
+		return fmt.Errorf("Errors encountered within %d/%d targets", errCounter, len(cfg.Repos))
 	}
 	return nil
 }
@@ -71,29 +83,29 @@ type errObj struct {
 }
 
 // performs all repo-specific operations
-func (e *Executor) execute() error {
-	err := e.cloneRepo()
+func (e *Executor) execute(repo Repo, dryRun bool) error {
+	err := repo.cloneRepo(e.workdir)
 	if err != nil {
 		return err
 	}
 
-	TfBackend, err := e.getVaultSecrets()
+	backendCreds, err := e.getVaultSecrets(repo.Secret)
 	if err != nil {
 		return err
 	}
 
-	TfBackend.Key = fmt.Sprintf("%s-tf-repo.tfstate", e.TfRepoCfg.Name)
-	err = e.generateBackendFile(TfBackend)
+	backendCreds.Key = fmt.Sprintf("%s-tf-repo.tfstate", repo.Name)
+	err = e.generateBackendFile(backendCreds, repo)
 	if err != nil {
 		return err
 	}
 
-	err = e.generateTfVarsFile(TfBackend)
+	err = e.generateTfVarsFile(backendCreds, repo)
 	if err != nil {
 		return err
 	}
 
-	err = e.processTfPlan()
+	err = e.processTfPlan(repo, dryRun)
 	if err != nil {
 		return err
 	}
