@@ -25,7 +25,7 @@ clean:
 ############
 
 .PHONY: build
-build:
+build: vet
 	go build -o $(NAME) .
 
 .PHONY: image
@@ -58,8 +58,9 @@ go-fmt:
 ###########
 
 .PHONY: vet
-vet:
+vet: test
 	go vet ./...
 
 .PHONY: test
-test: vet
+test:
+	CGO_ENABLED=0 GOOS=$(GOOS) go test -v ./...

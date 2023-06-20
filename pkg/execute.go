@@ -53,8 +53,13 @@ func Run(cfgPath,
 		return err
 	}
 
+	vaultClient, err := initVaultClient(vaultAddr, roleId, secretId)
+	if err != nil {
+		return err
+	}
+
+	// vault creds are stored for later usage when generating tfvars for vault provider
 	e := &Executor{
-		vaultClient:   initVaultClient(vaultAddr, roleId, secretId),
 		workdir:       workdir,
 		vaultAddr:     vaultAddr,
 		vaultRoleId:   roleId,
@@ -63,7 +68,7 @@ func Run(cfgPath,
 
 	errCounter := 0
 	for _, repo := range cfg.Repos {
-		err = e.execute(repo, cfg.DryRun)
+		err = e.execute(repo, vaultClient, cfg.DryRun)
 		if err != nil {
 			log.Printf("Error executing terraform operations for: %s\n", repo.Name)
 			log.Println(err)
@@ -83,13 +88,13 @@ type errObj struct {
 }
 
 // performs all repo-specific operations
-func (e *Executor) execute(repo Repo, dryRun bool) error {
+func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) error {
 	err := repo.cloneRepo(e.workdir)
 	if err != nil {
 		return err
 	}
 
-	backendCreds, err := e.getVaultSecrets(repo.Secret)
+	backendCreds, err := getVaultTfSecret(vaultClient, repo.Secret)
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,7 @@
 FROM quay.io/app-sre/golang:1.20.1 as builder
 WORKDIR /build
 COPY . .
-RUN make test build
+RUN make build
 
 FROM registry.access.redhat.com/ubi8-minimal
 COPY --from=builder /build/terraform-repo-executor  /bin/terraform-repo-executor

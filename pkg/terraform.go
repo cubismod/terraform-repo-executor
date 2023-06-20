@@ -17,7 +17,7 @@ const (
 	BACKEND_FILE = "s3.tfbackend"
 )
 
-type TfBackend struct {
+type TfCreds struct {
 	AccessKey string
 	SecretKey string
 	Region    string
@@ -27,7 +27,7 @@ type TfBackend struct {
 
 // generates a .tfbackend file to be utilized as partial backend config input file
 // the generated backend file will provide credentials for an s3 backend config
-func (e *Executor) generateBackendFile(creds TfBackend, repo Repo) error {
+func (e *Executor) generateBackendFile(creds TfCreds, repo Repo) error {
 	backendTemplate := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
 		{{- "\n"}}region = "{{.Region}}"
@@ -72,7 +72,7 @@ type TfVars struct {
 // generates .tfvars file to be utilized for input variables to a specific tf plan
 // the generated .tfvars file will provide credentials for the aws and vault providers
 // of the plan
-func (e *Executor) generateTfVarsFile(creds TfBackend, repo Repo) error {
+func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 	varsTemplate := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
 		{{- "\n"}}region = "{{.Region}}"
