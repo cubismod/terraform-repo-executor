@@ -12,6 +12,7 @@ An application for performing terraform operations of target git repositories.
 ### Optional
 * `CONFIG_FILE` - defaults to `/config.yaml`
 * `WORKDIR` - defaults to `/tf-repo`
+* `VAULT_TF_KV_VERSION` - defaults to `KV_V2`. Version of vault kv secret engine to expect tf creds within
 
 ## Config file
 The application processes the yaml/json defined at `CONFIG_FILE` for determining targets. The attributes are as follows:

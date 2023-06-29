@@ -27,18 +27,20 @@ type VaultSecret struct {
 }
 
 type Executor struct {
-	vaultClient   *vault.Client
-	workdir       string
-	vaultAddr     string
-	vaultRoleId   string
-	vaultSecretId string
+	vaultClient      *vault.Client
+	workdir          string
+	vaultAddr        string
+	vaultRoleId      string
+	vaultSecretId    string
+	vaultTfKvVersion string
 }
 
 func Run(cfgPath,
 	workdir,
 	vaultAddr,
 	roleId,
-	secretId string) error {
+	secretId,
+	kvVersion string) error {
 
 	// clear working directory upon exit
 	defer executeCommand("/", "rm", []string{"-rf", workdir})
@@ -60,10 +62,11 @@ func Run(cfgPath,
 
 	// vault creds are stored for later usage when generating tfvars for vault provider
 	e := &Executor{
-		workdir:       workdir,
-		vaultAddr:     vaultAddr,
-		vaultRoleId:   roleId,
-		vaultSecretId: secretId,
+		workdir:          workdir,
+		vaultAddr:        vaultAddr,
+		vaultRoleId:      roleId,
+		vaultSecretId:    secretId,
+		vaultTfKvVersion: kvVersion,
 	}
 
 	errCounter := 0
@@ -94,7 +97,7 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	backendCreds, err := getVaultTfSecret(vaultClient, repo.Secret)
+	backendCreds, err := getVaultTfSecret(vaultClient, repo.Secret, e.vaultTfKvVersion)
 	if err != nil {
 		return err
 	}
