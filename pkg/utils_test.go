@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -41,7 +42,7 @@ repos:
 					Ref:    "d82b3cb292d91ec2eb26fc282d751555088819f3",
 					Path:   "prod/networking",
 					Delete: false,
-					Secret: VaultSecret{
+					Secret: vaultutil.VaultSecret{
 						Path:    "terraform/creds/prod-acount",
 						Version: 4,
 					},
@@ -95,7 +96,7 @@ repos:
 					Ref:    "d82b3cb292d91ec2eb26fc282d751555088819f3",
 					Path:   "prod/networking",
 					Delete: false,
-					Secret: VaultSecret{
+					Secret: vaultutil.VaultSecret{
 						Path:    "terraform/creds/prod-acount",
 						Version: 4,
 					},
@@ -106,7 +107,7 @@ repos:
 					Ref:    "47ef09135da2d158ede78dbbe8c59de1775a274c",
 					Path:   "stage/network",
 					Delete: true,
-					Secret: VaultSecret{
+					Secret: vaultutil.VaultSecret{
 						Path:    "terraform/creds/stage-account",
 						Version: 1,
 					},

@@ -9,12 +9,8 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 	"github.com/hashicorp/terraform-exec/tfexec"
-)
-
-const (
-	TFVARS_FILE  = "plan.tfvars"
-	BACKEND_FILE = "s3.tfbackend"
 )
 
 type TfCreds struct {
@@ -24,6 +20,34 @@ type TfCreds struct {
 	Key       string
 	Bucket    string
 }
+
+// standardized AppSRE terraform secret keys
+const (
+	AWS_ACCESS_KEY_ID     = "aws_access_key_id"
+	AWS_SECRET_ACCESS_KEY = "aws_secret_access_key"
+	AWS_REGION            = "region"
+	AWS_BUCKET            = "bucket"
+)
+
+func extractTfCreds(secret vaultutil.VaultKvData) (TfCreds, error) {
+	for _, key := range []string{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_REGION} {
+		if secret[key] == nil {
+			return TfCreds{}, fmt.Errorf("Required terraform key `%s` missing from Vault secret.", key)
+		}
+	}
+
+	return TfCreds{
+		AccessKey: secret[AWS_ACCESS_KEY_ID].(string),
+		SecretKey: secret[AWS_SECRET_ACCESS_KEY].(string),
+		Bucket:    secret[AWS_BUCKET].(string),
+		Region:    secret[AWS_REGION].(string),
+	}, nil
+}
+
+const (
+	TFVARS_FILE  = "plan.tfvars"
+	BACKEND_FILE = "s3.tfbackend"
+)
 
 // generates a .tfbackend file to be utilized as partial backend config input file
 // the generated backend file will provide credentials for an s3 backend config

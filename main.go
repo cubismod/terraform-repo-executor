@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/app-sre/terraform-repo-executor/pkg"
+	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 )
 
 const (
@@ -22,7 +23,7 @@ func main() {
 	vaultAddr := getEnvOrError(VAULT_ADDR)
 	roleId := getEnvOrError(VAULT_ROLE_ID)
 	secretId := getEnvOrError(VAULT_SECRET_ID)
-	kvVersion := getEnvOrDefault(VAULT_TF_KV_VERSION, pkg.KV_V2)
+	kvVersion := getEnvOrDefault(VAULT_TF_KV_VERSION, vaultutil.KV_V2)
 
 	err := pkg.Run(cfgPath,
 		workdir,
