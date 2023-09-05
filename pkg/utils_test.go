@@ -71,7 +71,10 @@ repos:
 				"secret": {
 				  "path": "terraform/creds/prod-acount",
 				  "version": 4
-				}
+				},
+				"bucket": null,
+				"bucket_path": null,
+				"region": null
 			  },
 			  {
 				"repository": "https://gitlab.myinstance.com/another-gl-group/project_b",
