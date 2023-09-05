@@ -14,12 +14,15 @@ type TfRepo struct {
 }
 
 type Repo struct {
-	Name   string                `yaml:"name" json:"name"`
-	Url    string                `yaml:"repository" json:"repository"`
-	Path   string                `yaml:"project_path" json:"project_path"`
-	Ref    string                `yaml:"ref" json:"ref"`
-	Delete bool                  `yaml:"delete" json:"delete"`
-	Secret vaultutil.VaultSecret `yaml:"secret" json:"secret"`
+	Name       string                `yaml:"name" json:"name"`
+	Url        string                `yaml:"repository" json:"repository"`
+	Path       string                `yaml:"project_path" json:"project_path"`
+	Ref        string                `yaml:"ref" json:"ref"`
+	Delete     bool                  `yaml:"delete" json:"delete"`
+	Secret     vaultutil.VaultSecret `yaml:"secret" json:"secret"`
+	Bucket     string                `yaml:"bucket,omitempty" json:"bucket,omitempty"`
+	Region     string                `yaml:"region,omitempty" json:"region,omitempty"`
+	BucketPath string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
 }
 
 type Executor struct {
@@ -98,12 +101,16 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	backendCreds, err := extractTfCreds(secret)
+	backendCreds, err := extractTfCreds(secret, repo)
 	if err != nil {
 		return err
 	}
 
-	backendCreds.Key = fmt.Sprintf("%s-tf-repo.tfstate", repo.Name)
+	if len(repo.BucketPath) > 0 {
+		backendCreds.Key = fmt.Sprintf("%s/%s-tf-repo.tfstate", repo.BucketPath, repo.Name)
+	} else {
+		backendCreds.Key = fmt.Sprintf("%s-tf-repo.tfstate", repo.Name)
+	}
 	err = e.generateBackendFile(backendCreds, repo)
 	if err != nil {
 		return err
