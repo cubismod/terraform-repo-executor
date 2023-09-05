@@ -25,6 +25,9 @@ repos:
   secret:
     path: terraform/creds/prod-acount
     version: 4
+  bucket: app-sre
+  region: us-east-1
+  bucket_path: tf-repo
 `
 		cfgPath := fmt.Sprintf("%s/%s", working, "good.yml")
 		os.WriteFile(cfgPath, []byte(raw), 0644)
@@ -46,6 +49,9 @@ repos:
 						Path:    "terraform/creds/prod-acount",
 						Version: 4,
 					},
+					Bucket:     "app-sre",
+					BucketPath: "tf-repo",
+					Region:     "us-east-1",
 				},
 			},
 		}
@@ -76,7 +82,10 @@ repos:
 				"secret": {
 				  "path": "terraform/creds/stage-account",
 				  "version": 1
-				}
+				},
+				"bucket": "app-sre",
+				"bucket_path": "tf-repo",
+				"region": "us-east-1"
 			  }
 			]
 }`
@@ -100,6 +109,9 @@ repos:
 						Path:    "terraform/creds/prod-acount",
 						Version: 4,
 					},
+					Bucket:     "",
+					BucketPath: "",
+					Region:     "",
 				},
 				{
 					Url:    "https://gitlab.myinstance.com/another-gl-group/project_b",
@@ -111,6 +123,9 @@ repos:
 						Path:    "terraform/creds/stage-account",
 						Version: 1,
 					},
+					Bucket:     "app-sre",
+					BucketPath: "tf-repo",
+					Region:     "us-east-1",
 				},
 			},
 		}
