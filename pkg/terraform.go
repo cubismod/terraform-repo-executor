@@ -29,19 +29,36 @@ const (
 	AWS_BUCKET            = "bucket"
 )
 
-func extractTfCreds(secret vaultutil.VaultKvData) (TfCreds, error) {
-	for _, key := range []string{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET, AWS_REGION} {
-		if secret[key] == nil {
-			return TfCreds{}, fmt.Errorf("Required terraform key `%s` missing from Vault secret.", key)
+func extractTfCreds(secret vaultutil.VaultKvData, repo Repo) (TfCreds, error) {
+	secretKeys := []string{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY}
+	errStr := "Required terraform key `%s` missing from Vault secret."
+	// handle cases where a bucket & region is already defined for the AWS account via terraform-state-1.yml
+	if len(repo.Bucket) > 0 && len(repo.Region) > 0 {
+		for _, key := range secretKeys {
+			if secret[key] == nil {
+				return TfCreds{}, fmt.Errorf(errStr, key)
+			}
 		}
+		return TfCreds{
+			AccessKey: secret[AWS_ACCESS_KEY_ID].(string),
+			SecretKey: secret[AWS_SECRET_ACCESS_KEY].(string),
+			Bucket:    repo.Bucket,
+			Region:    repo.Region,
+		}, nil
+	} else {
+		secretKeys = append(secretKeys, []string{AWS_BUCKET, AWS_REGION}...)
+		for _, key := range secretKeys {
+			if secret[key] == nil {
+				return TfCreds{}, fmt.Errorf(errStr, key)
+			}
+		}
+		return TfCreds{
+			AccessKey: secret[AWS_ACCESS_KEY_ID].(string),
+			SecretKey: secret[AWS_SECRET_ACCESS_KEY].(string),
+			Bucket:    secret[AWS_BUCKET].(string),
+			Region:    secret[AWS_REGION].(string),
+		}, nil
 	}
-
-	return TfCreds{
-		AccessKey: secret[AWS_ACCESS_KEY_ID].(string),
-		SecretKey: secret[AWS_SECRET_ACCESS_KEY].(string),
-		Bucket:    secret[AWS_BUCKET].(string),
-		Region:    secret[AWS_REGION].(string),
-	}, nil
 }
 
 const (
