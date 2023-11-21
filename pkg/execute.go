@@ -14,15 +14,16 @@ type TfRepo struct {
 }
 
 type Repo struct {
-	Name       string                `yaml:"name" json:"name"`
-	Url        string                `yaml:"repository" json:"repository"`
-	Path       string                `yaml:"project_path" json:"project_path"`
-	Ref        string                `yaml:"ref" json:"ref"`
-	Delete     bool                  `yaml:"delete" json:"delete"`
-	Secret     vaultutil.VaultSecret `yaml:"secret" json:"secret"`
-	Bucket     string                `yaml:"bucket,omitempty" json:"bucket,omitempty"`
-	Region     string                `yaml:"region,omitempty" json:"region,omitempty"`
-	BucketPath string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
+	Name        string                `yaml:"name" json:"name"`
+	Url         string                `yaml:"repository" json:"repository"`
+	Path        string                `yaml:"project_path" json:"project_path"`
+	Ref         string                `yaml:"ref" json:"ref"`
+	Delete      bool                  `yaml:"delete" json:"delete"`
+	Secret      vaultutil.VaultSecret `yaml:"secret" json:"secret"`
+	Bucket      string                `yaml:"bucket,omitempty" json:"bucket,omitempty"`
+	Region      string                `yaml:"region,omitempty" json:"region,omitempty"`
+	BucketPath  string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
+	RequireFips bool                  `yaml:"require_fips" json:"require_fips"`
 }
 
 type Executor struct {
@@ -94,6 +95,17 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 	err := repo.cloneRepo(e.workdir)
 	if err != nil {
 		return err
+	}
+
+	// check for fips compliance
+	if repo.RequireFips {
+		args := []string{"-R", "'^\\s*use_fips_endpoint\\s*=\\s*true\\s*$'", "."}
+
+		_, err := executeCommand(e.workdir, "grep", args)
+		if err != nil {
+			log.Printf("Repository '%s' is not using 'use_fips_endpoint = true' despite the repo requiring fips.", repo.Name)
+			return err
+		}
 	}
 
 	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.Secret, e.vaultTfKvVersion)
