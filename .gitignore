@@ -2,3 +2,6 @@ test/plan_a/.terraform
 test/plan_b/.terraform
 working
 terraform-repo-executor
+.env
+config.yaml
+.vscode/

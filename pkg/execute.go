@@ -97,17 +97,6 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	// check for fips compliance
-	if repo.RequireFips {
-		args := []string{"-R", "'^\\s*use_fips_endpoint\\s*=\\s*true\\s*$'", "."}
-
-		_, err := executeCommand(e.workdir, "grep", args)
-		if err != nil {
-			log.Printf("Repository '%s' is not using 'use_fips_endpoint = true' despite the repo requiring fips.", repo.Name)
-			return err
-		}
-	}
-
 	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.Secret, e.vaultTfKvVersion)
 	if err != nil {
 		return err
