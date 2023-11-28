@@ -155,6 +155,34 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 	return nil
 }
 
+// checks the generated terraform plan file to ensure that the fips endpoint is enabled in the AWS provider configuration
+func (e *Executor) fipsComplianceCheck(repo Repo, planFile string, tf *tfexec.Terraform) error {
+	out, err := tf.ShowPlanFile(context.Background(), planFile)
+
+	if err != nil {
+		log.Println("Unable to determine FIPS compatibility")
+		return err
+	}
+
+	compliant := false
+
+	for _, provider := range out.Config.ProviderConfigs {
+		if provider.Name == "aws" {
+			for k, v := range provider.Expressions {
+				if k == "use_fips_endpoint" && v.ConstantValue == true {
+					compliant = true
+				}
+			}
+		}
+	}
+
+	if !compliant {
+		return fmt.Errorf("repository '%s' is not using 'use_fips_endpoint = true' for the AWS provider despite the repo requiring fips", repo.Name)
+	}
+
+	return nil
+}
+
 // executes target tf plan
 func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 	dir := fmt.Sprintf("%s/%s/%s", e.workdir, repo.Name, repo.Path)
@@ -211,27 +239,9 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 	log.Println(stdout.String())
 
 	if repo.RequireFips && dryRun {
-		out, err := tf.ShowPlanFile(context.Background(), planFile)
-
+		err := e.fipsComplianceCheck(repo, planFile, tf)
 		if err != nil {
-			log.Println("Unable to determine FIPS compatibility")
 			return err
-		}
-
-		compliant := false
-
-		for _, provider := range out.Config.ProviderConfigs {
-			if provider.Name == "aws" {
-				for k, v := range provider.Expressions {
-					if k == "use_fips_endpoint" && v.ConstantValue == true {
-						compliant = true
-					}
-				}
-			}
-		}
-
-		if !compliant {
-			return fmt.Errorf("repository '%s' is not using 'use_fips_endpoint = true' for the AWS provider despite the repo requiring fips", repo.Name)
 		}
 	}
 
