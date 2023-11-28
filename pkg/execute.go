@@ -14,15 +14,16 @@ type TfRepo struct {
 }
 
 type Repo struct {
-	Name       string                `yaml:"name" json:"name"`
-	Url        string                `yaml:"repository" json:"repository"`
-	Path       string                `yaml:"project_path" json:"project_path"`
-	Ref        string                `yaml:"ref" json:"ref"`
-	Delete     bool                  `yaml:"delete" json:"delete"`
-	Secret     vaultutil.VaultSecret `yaml:"secret" json:"secret"`
-	Bucket     string                `yaml:"bucket,omitempty" json:"bucket,omitempty"`
-	Region     string                `yaml:"region,omitempty" json:"region,omitempty"`
-	BucketPath string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
+	Name        string                `yaml:"name" json:"name"`
+	Url         string                `yaml:"repository" json:"repository"`
+	Path        string                `yaml:"project_path" json:"project_path"`
+	Ref         string                `yaml:"ref" json:"ref"`
+	Delete      bool                  `yaml:"delete" json:"delete"`
+	Secret      vaultutil.VaultSecret `yaml:"secret" json:"secret"`
+	Bucket      string                `yaml:"bucket,omitempty" json:"bucket,omitempty"`
+	Region      string                `yaml:"region,omitempty" json:"region,omitempty"`
+	BucketPath  string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
+	RequireFips bool                  `yaml:"require_fips" json:"require_fips"`
 }
 
 type Executor struct {
