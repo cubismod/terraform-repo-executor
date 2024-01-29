@@ -19,7 +19,11 @@ RUN wget -q https://github.com/tofuutils/tenv/releases/download/v1.0.5/tenv_1.0.
     && rm tenv_1.0.5_linux_amd64.zip \
     && rm -r tenv/
 
-RUN tenv tf install 1.4.5 && \
+# instruct tenv to install terraform binaries into /bin/tf
+ENV TFENV_ROOT=/bin/tf
+
+RUN mkdir -p /bin/tf && \
+    tenv tf install 1.4.5 && \
     tenv tf install 1.5.0 && \
     tenv tf install 1.6.0 && \
     tenv tf install 1.7.0
