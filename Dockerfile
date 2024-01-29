@@ -13,9 +13,15 @@ RUN microdnf update -y && \
     microdnf install -y wget && \
     microdnf clean all
 
-RUN wget -q https://releases.hashicorp.com/terraform/1.4.5/terraform_1.4.5_linux_amd64.zip \
-    && unzip terraform_1.4.5_linux_amd64.zip \
-    && mv terraform /usr/local/bin/ \
-    && rm terraform_1.4.5_linux_amd64.zip
+RUN wget -q https://github.com/tofuutils/tenv/releases/download/v1.0.5/tenv_1.0.5_linux_amd64.zip \
+    && unzip tenv_1.0.5_linux_amd64.zip -d tenv \
+    && mv tenv/tenv /usr/local/bin/ \
+    && rm tenv_1.0.5_linux_amd64.zip \
+    && rm -r tenv/
+
+RUN tenv tf install 1.4.5 && \
+    tenv tf install 1.5.0 && \
+    tenv tf install 1.6.0 && \
+    tenv tf install 1.7.0
 
 ENTRYPOINT  [ "/bin/terraform-repo-executor" ]
