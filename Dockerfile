@@ -11,7 +11,7 @@ RUN curl -sfL https://github.com/tofuutils/tenv/releases/download/v${TENV_VERSIO
     -o tenv.tar.gz \
     && tar -zvxf tenv.tar.gz
 
-FROM registry.access.redhat.com/ubi8-minimal
+FROM registry.access.redhat.com/ubi8-minimal:8.9
 COPY --from=builder /build/terraform-repo-executor  /bin/terraform-repo-executor
 COPY --from=downloader /download/tenv /usr/local/bin
 
