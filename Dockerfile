@@ -15,15 +15,14 @@ FROM registry.access.redhat.com/ubi8-minimal:8.9
 COPY --from=builder /build/terraform-repo-executor  /bin/terraform-repo-executor
 COPY --from=downloader /download/tenv /usr/local/bin
 
-ENV TFENV_ROOT=/usr/bin/tf
+ENV TFENV_ROOT=/usr/bin
 
 RUN microdnf update -y && \
     microdnf install -y git && \
     microdnf install -y ca-certificates && \
     microdnf clean all
 
-RUN mkdir -p ${TFENV_ROOT} && \
-    tenv tf install 1.4.5 && \
+RUN tenv tf install 1.4.5 && \
     tenv tf install 1.5.0 && \
     tenv tf install 1.6.0 && \
     tenv tf install 1.7.0
