@@ -188,7 +188,11 @@ func (e *Executor) fipsComplianceCheck(repo Repo, planFile string, tf *tfexec.Te
 // executes target tf plan
 func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 	dir := fmt.Sprintf("%s/%s/%s", e.workdir, repo.Name, repo.Path)
-	tf, err := tfexec.NewTerraform(dir, "terraform")
+
+	/// each repo can use a different version of the TF binary, specified in App Interface
+	tfBinaryLocation := fmt.Sprintf("/usr/bin/Terraform/%s/terraform", repo.TfVersion)
+
+	tf, err := tfexec.NewTerraform(dir, tfBinaryLocation)
 	if err != nil {
 		return err
 	}

@@ -27,6 +27,7 @@ type Repo struct {
 	Region      string                `yaml:"region,omitempty" json:"region,omitempty"`
 	BucketPath  string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
 	RequireFips bool                  `yaml:"require_fips" json:"require_fips"`
+	TfVersion   string                `yaml:"tf_version" json:"tf_version"`
 }
 
 // Executor includes required secrets and variables to perform a tf repo executor run
