@@ -28,6 +28,7 @@ repos:
   bucket: app-sre
   region: us-east-1
   bucket_path: tf-repo
+  tf_version: 1.5.7
 `
 		cfgPath := fmt.Sprintf("%s/%s", working, "good.yml")
 		os.WriteFile(cfgPath, []byte(raw), 0644)
@@ -52,6 +53,7 @@ repos:
 					Bucket:     "app-sre",
 					BucketPath: "tf-repo",
 					Region:     "us-east-1",
+					TfVersion:  "1.5.7",
 				},
 			},
 		}
@@ -74,7 +76,8 @@ repos:
 				},
 				"bucket": null,
 				"bucket_path": null,
-				"region": null
+				"region": null,
+				"tf_version": "1.5.7"
 			  },
 			  {
 				"repository": "https://gitlab.myinstance.com/another-gl-group/project_b",
@@ -88,7 +91,8 @@ repos:
 				},
 				"bucket": "app-sre",
 				"bucket_path": "tf-repo",
-				"region": "us-east-1"
+				"region": "us-east-1",
+				"tf_version": "1.4.7"
 			  }
 			]
 }`
@@ -115,6 +119,7 @@ repos:
 					Bucket:     "",
 					BucketPath: "",
 					Region:     "",
+					TfVersion:  "1.5.7",
 				},
 				{
 					URL:    "https://gitlab.myinstance.com/another-gl-group/project_b",
@@ -129,6 +134,7 @@ repos:
 					Bucket:     "app-sre",
 					BucketPath: "tf-repo",
 					Region:     "us-east-1",
+					TfVersion:  "1.4.7",
 				},
 			},
 		}
