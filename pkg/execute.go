@@ -22,12 +22,18 @@ type Repo struct {
 	Path        string                `yaml:"project_path" json:"project_path"`
 	Ref         string                `yaml:"ref" json:"ref"`
 	Delete      bool                  `yaml:"delete" json:"delete"`
-	Secret      vaultutil.VaultSecret `yaml:"secret" json:"secret"`
+	AWSCreds    vaultutil.VaultSecret `yaml:"aws_creds" json:"aws_creds"`
 	Bucket      string                `yaml:"bucket,omitempty" json:"bucket,omitempty"`
 	Region      string                `yaml:"region,omitempty" json:"region,omitempty"`
 	BucketPath  string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
 	RequireFips bool                  `yaml:"require_fips" json:"require_fips"`
 	TfVersion   string                `yaml:"tf_version" json:"tf_version"`
+	TfVariables TfVariables           `yaml:"variables,omitempty" json:"variables,omitempty"`
+}
+
+type TfVariables struct {
+	Inputs  vaultutil.VaultSecret `yaml:"inputs" json:"inputs"`
+	Outputs vaultutil.VaultSecret `yaml:"outputs" json:"outputs"`
 }
 
 // Executor includes required secrets and variables to perform a tf repo executor run
@@ -98,7 +104,7 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.Secret, e.vaultTfKvVersion)
+	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.AWSCreds, e.vaultTfKvVersion)
 	if err != nil {
 		return err
 	}
