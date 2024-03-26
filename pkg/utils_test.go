@@ -36,11 +36,11 @@ repos:
 		cfg, err := processConfig(cfgPath)
 		assert.Nil(t, err)
 
-		expected := TfRepo{
+		expected := Input{
 			DryRun: true,
 			Repos: []Repo{
 				{
-					Url:    "https://gitlab.myinstance.com/some-gl-group/project_a",
+					URL:    "https://gitlab.myinstance.com/some-gl-group/project_a",
 					Name:   "foo-foo",
 					Ref:    "d82b3cb292d91ec2eb26fc282d751555088819f3",
 					Path:   "prod/networking",
@@ -99,11 +99,11 @@ repos:
 		cfg, err := processConfig(cfgPath)
 		assert.Nil(t, err)
 
-		expected := TfRepo{
+		expected := Input{
 			DryRun: true,
 			Repos: []Repo{
 				{
-					Url:    "https://gitlab.myinstance.com/some-gl-group/project_a",
+					URL:    "https://gitlab.myinstance.com/some-gl-group/project_a",
 					Name:   "foo-foo",
 					Ref:    "d82b3cb292d91ec2eb26fc282d751555088819f3",
 					Path:   "prod/networking",
@@ -117,7 +117,7 @@ repos:
 					Region:     "",
 				},
 				{
-					Url:    "https://gitlab.myinstance.com/another-gl-group/project_b",
+					URL:    "https://gitlab.myinstance.com/another-gl-group/project_b",
 					Name:   "bar-bar",
 					Ref:    "47ef09135da2d158ede78dbbe8c59de1775a274c",
 					Path:   "stage/network",

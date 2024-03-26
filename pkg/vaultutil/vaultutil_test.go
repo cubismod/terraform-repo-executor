@@ -22,9 +22,9 @@ func TestInitVaultClient(t *testing.T) {
 	}))
 	defer vaultMock.Close()
 
-	roleId := "foo"
-	secretId := "bar"
-	client, err := InitVaultClient(vaultMock.URL, roleId, secretId)
+	roleID := "foo"
+	secretID := "bar"
+	client, err := InitVaultClient(vaultMock.URL, roleID, secretID)
 	assert.Nil(t, err)
 	assert.Equal(t, mockedToken, client.Token())
 }
@@ -55,7 +55,7 @@ func TestGetVaultTfSecretV2(t *testing.T) {
 	actual, err := GetVaultTfSecret(client, VaultSecret{
 		Path:    "terraform/stage",
 		Version: 3,
-	}, KV_V2)
+	}, KvV2)
 	assert.Nil(t, err)
 
 	expected := VaultKvData{
@@ -90,7 +90,7 @@ func TestGetVaultTfSecretV1(t *testing.T) {
 	actual, err := GetVaultTfSecret(client, VaultSecret{
 		Path:    "terraform/stage",
 		Version: 1,
-	}, KV_V1)
+	}, KvV1)
 	assert.Nil(t, err)
 
 	expected := VaultKvData{
