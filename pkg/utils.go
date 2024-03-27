@@ -10,13 +10,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func processConfig(cfgPath string) (*TfRepo, error) {
+func processConfig(cfgPath string) (*Input, error) {
 	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var cfg TfRepo
+	var cfg Input
 	// internally yaml.Unmarshal will use json.Unmarshal if it detects json format
 	err = yaml.Unmarshal(raw, &cfg)
 	if err != nil {
@@ -44,7 +44,7 @@ func (r Repo) cloneRepo(workdir string) error {
 	args := []string{"-c", fmt.Sprintf(
 		// clone repo with specified name and checkout specified ref
 		"git clone %s %s && cd %s && git checkout %s",
-		r.Url,
+		r.URL,
 		r.Name,
 		r.Name,
 		r.Ref,

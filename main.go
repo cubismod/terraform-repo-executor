@@ -1,3 +1,4 @@
+// main package for terraform-repo-executor
 package main
 
 import (
@@ -8,28 +9,29 @@ import (
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 )
 
+// environment variables
 const (
-	CONFIG_FILE         = "CONFIG_FILE"
-	VAULT_ADDR          = "VAULT_ADDR"
-	VAULT_ROLE_ID       = "VAULT_ROLE_ID"
-	VAULT_SECRET_ID     = "VAULT_SECRET_ID"
-	VAULT_TF_KV_VERSION = "VAULT_TF_KV_VERSION"
-	WORKDIR             = "WORKDIR"
+	ConfigFile       = "CONFIG_FILE"
+	VaultAddr        = "VAULT_ADDR"
+	VaultRoleID      = "VAULT_ROLE_ID"
+	VaultSecretID    = "VAULT_SECRET_ID"
+	VaultTfKvVersion = "VAULT_TF_KV_VERSION"
+	WorkDir          = "WORKDIR"
 )
 
 func main() {
-	cfgPath := getEnvOrDefault(CONFIG_FILE, "/config.yaml")
-	workdir := getEnvOrDefault(WORKDIR, "/tf-repo")
-	vaultAddr := getEnvOrError(VAULT_ADDR)
-	roleId := getEnvOrError(VAULT_ROLE_ID)
-	secretId := getEnvOrError(VAULT_SECRET_ID)
-	kvVersion := getEnvOrDefault(VAULT_TF_KV_VERSION, vaultutil.KV_V2)
+	cfgPath := getEnvOrDefault(ConfigFile, "/config.yaml")
+	workdir := getEnvOrDefault(WorkDir, "/tf-repo")
+	vaultAddr := getEnvOrError(VaultAddr)
+	roleID := getEnvOrError(VaultRoleID)
+	secretID := getEnvOrError(VaultSecretID)
+	kvVersion := getEnvOrDefault(VaultTfKvVersion, vaultutil.KvV2)
 
 	err := pkg.Run(cfgPath,
 		workdir,
 		vaultAddr,
-		roleId,
-		secretId,
+		roleID,
+		secretID,
 		kvVersion,
 	)
 	if err != nil {

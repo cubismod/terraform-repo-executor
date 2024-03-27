@@ -1,5 +1,7 @@
 NAME				:= terraform-repo-executor
 REPO				:= quay.io/app-sre/$(NAME)
+REVIVE_VERSION		:= v1.3.7
+STATICCHECK_VERSION	:= 2023.1.7
 TAG					:= $(shell git rev-parse --short HEAD)
 
 PKGS				:= $(shell go list ./... | grep -v -E '/vendor/|/test')
@@ -56,6 +58,19 @@ go-fmt:
 ###########
 # Testing #
 ###########
+
+.PHONY: lint
+lint: revive staticcheck
+
+.PHONY: revive
+revive:
+	go install github.com/mgechev/revive@$(REVIVE_VERSION)
+	go run github.com/mgechev/revive@$(REVIVE_VERSION) -config revive.toml -set_exit_status ./...
+
+.PHONY: staticcheck
+staticcheck:
+	go install honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION)
+	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
 
 .PHONY: vet
 vet: test

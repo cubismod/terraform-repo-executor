@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 )
 
+// TfCreds is made up of AWS credentials and configuration for using an S3 backend with Terraform
 type TfCreds struct {
 	AccessKey string
 	SecretKey string
@@ -23,14 +24,14 @@ type TfCreds struct {
 
 // standardized AppSRE terraform secret keys
 const (
-	AWS_ACCESS_KEY_ID     = "aws_access_key_id"
-	AWS_SECRET_ACCESS_KEY = "aws_secret_access_key"
-	AWS_REGION            = "region"
-	AWS_BUCKET            = "bucket"
+	AwsAccessKeyID     = "aws_access_key_id"
+	AwsSecretAccessKey = "aws_secret_access_key"
+	AwsRegion          = "region"
+	AwsBucket          = "bucket"
 )
 
 func extractTfCreds(secret vaultutil.VaultKvData, repo Repo) (TfCreds, error) {
-	secretKeys := []string{AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY}
+	secretKeys := []string{AwsAccessKeyID, AwsSecretAccessKey}
 	errStr := "Required terraform key `%s` missing from Vault secret."
 	// handle cases where a bucket & region is already defined for the AWS account via terraform-state-1.yml
 	if len(repo.Bucket) > 0 && len(repo.Region) > 0 {
@@ -40,30 +41,30 @@ func extractTfCreds(secret vaultutil.VaultKvData, repo Repo) (TfCreds, error) {
 			}
 		}
 		return TfCreds{
-			AccessKey: secret[AWS_ACCESS_KEY_ID].(string),
-			SecretKey: secret[AWS_SECRET_ACCESS_KEY].(string),
+			AccessKey: secret[AwsAccessKeyID].(string),
+			SecretKey: secret[AwsSecretAccessKey].(string),
 			Bucket:    repo.Bucket,
 			Region:    repo.Region,
 		}, nil
-	} else {
-		secretKeys = append(secretKeys, []string{AWS_BUCKET, AWS_REGION}...)
-		for _, key := range secretKeys {
-			if secret[key] == nil {
-				return TfCreds{}, fmt.Errorf(errStr, key)
-			}
-		}
-		return TfCreds{
-			AccessKey: secret[AWS_ACCESS_KEY_ID].(string),
-			SecretKey: secret[AWS_SECRET_ACCESS_KEY].(string),
-			Bucket:    secret[AWS_BUCKET].(string),
-			Region:    secret[AWS_REGION].(string),
-		}, nil
 	}
+	secretKeys = append(secretKeys, []string{AwsBucket, AwsRegion}...)
+	for _, key := range secretKeys {
+		if secret[key] == nil {
+			return TfCreds{}, fmt.Errorf(errStr, key)
+		}
+	}
+	return TfCreds{
+		AccessKey: secret[AwsAccessKeyID].(string),
+		SecretKey: secret[AwsSecretAccessKey].(string),
+		Bucket:    secret[AwsBucket].(string),
+		Region:    secret[AwsRegion].(string),
+	}, nil
 }
 
+// terraform specific filenames
 const (
-	TFVARS_FILE  = "plan.tfvars"
-	BACKEND_FILE = "s3.tfbackend"
+	TfVarsFile  = "plan.tfvars"
+	BackendFile = "s3.tfbackend"
 )
 
 // generates a .tfbackend file to be utilized as partial backend config input file
@@ -85,7 +86,7 @@ func (e *Executor) generateBackendFile(creds TfCreds, repo Repo) error {
 			e.workdir,
 			repo.Name,
 			repo.Path,
-			BACKEND_FILE,
+			BackendFile,
 		),
 	)
 	if err != nil {
@@ -101,13 +102,14 @@ func (e *Executor) generateBackendFile(creds TfCreds, repo Repo) error {
 	return nil
 }
 
+// TfVars are secrets and IDs required for setting up a Terraform S3 backend
 type TfVars struct {
 	AccessKey     string
 	SecretKey     string
 	Region        string
 	VaultAddress  string
-	VaultRoleId   string
-	VaultSecretId string
+	VaultRoleID   string
+	VaultSecretID string
 }
 
 // generates .tfvars file to be utilized for input variables to a specific tf plan
@@ -131,7 +133,7 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 			e.workdir,
 			repo.Name,
 			repo.Path,
-			TFVARS_FILE,
+			TfVarsFile,
 		),
 	)
 	if err != nil {
@@ -144,8 +146,8 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		SecretKey:     creds.SecretKey,
 		Region:        creds.Region,
 		VaultAddress:  e.vaultAddr,
-		VaultRoleId:   e.vaultRoleId,
-		VaultSecretId: e.vaultSecretId,
+		VaultRoleID:   e.vaultRoleID,
+		VaultSecretID: e.vaultSecretID,
 	}
 	err = tmpl.Execute(f, vars)
 	if err != nil {
@@ -194,7 +196,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 	log.Printf("Initializing terraform config for %s\n", repo.Name)
 	err = tf.Init(
 		context.Background(),
-		tfexec.BackendConfig(BACKEND_FILE),
+		tfexec.BackendConfig(BackendFile),
 	)
 	if err != nil {
 		return err
@@ -207,26 +209,26 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 	planFile := fmt.Sprintf("%s/%s-plan", e.workdir, repo.Name)
 
 	if dryRun {
-		log.Println(fmt.Sprintf("Performing terraform plan for %s", repo.Name))
+		log.Printf("Performing terraform plan for %s", repo.Name)
 		_, err = tf.Plan(
 			context.Background(),
 			tfexec.Destroy(repo.Delete),
-			tfexec.VarFile(TFVARS_FILE),
+			tfexec.VarFile(TfVarsFile),
 			tfexec.Out(planFile), // this plan file will be useful to have in a later improvement as well
 		)
 	} else {
 		// tf.exec.Destroy flag cannot be passed to tf.Apply in same fashion as above Plan() logic
 		if repo.Delete {
-			log.Println(fmt.Sprintf("Performing terraform destroy for %s", repo.Name))
+			log.Printf("Performing terraform destroy for %s", repo.Name)
 			err = tf.Destroy(
 				context.Background(),
-				tfexec.VarFile(TFVARS_FILE),
+				tfexec.VarFile(TfVarsFile),
 			)
 		} else {
-			log.Println(fmt.Sprintf("Performing terraform apply for %s", repo.Name))
+			log.Printf("Performing terraform apply for %s", repo.Name)
 			err = tf.Apply(
 				context.Background(),
-				tfexec.VarFile(TFVARS_FILE),
+				tfexec.VarFile(TfVarsFile),
 			)
 		}
 
