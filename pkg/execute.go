@@ -129,6 +129,19 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
+	if repo.TfVariables.Inputs.Path != "" {
+		// extract kv pairs from vault for inputs and write them to a file for terraform usage
+		inputSecret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.TfVariables.Inputs, e.vaultTfKvVersion)
+		if err != nil {
+			return err
+		}
+
+		err = e.generateInputVarsFile(inputSecret, repo)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = e.processTfPlan(repo, dryRun)
 	if err != nil {
 		return err

@@ -63,8 +63,9 @@ func extractTfCreds(secret vaultutil.VaultKvData, repo Repo) (TfCreds, error) {
 
 // terraform specific filenames
 const (
-	TfVarsFile  = "plan.tfvars"
-	BackendFile = "s3.tfbackend"
+	AWSVarsFile   = "aws.tfvars"
+	InputVarsFile = "input.tfvars"
+	BackendFile   = "s3.tfbackend"
 )
 
 // generates a .tfbackend file to be utilized as partial backend config input file
@@ -116,30 +117,20 @@ type TfVars struct {
 // the generated .tfvars file will provide credentials for the aws and vault providers
 // of the plan
 func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
-	varsTemplate := `access_key = "{{.AccessKey}}"
+	// first create a *.tfvars file for S3 backend credentials
+	body := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
 		{{- "\n"}}region = "{{.Region}}"
 		{{- "\n"}}vault_addr = "{{.VaultAddress}}"
 		{{- "\n"}}vault_role_id = "{{.VaultRoleId}}"
 		{{- "\n"}}vault_secret_id = "{{.VaultSecretId}}"`
 
-	tmpl, err := template.New("tfvars").Parse(varsTemplate)
-	if err != nil {
-		return err
-	}
-
-	f, err := os.Create(
-		fmt.Sprintf("%s/%s/%s/%s",
-			e.workdir,
-			repo.Name,
-			repo.Path,
-			TfVarsFile,
-		),
+	filename := fmt.Sprintf("%s/%s/%s/%s",
+		e.workdir,
+		repo.Name,
+		repo.Path,
+		AWSVarsFile,
 	)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
 
 	vars := TfVars{
 		AccessKey:     creds.AccessKey,
@@ -149,6 +140,50 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		VaultRoleID:   e.vaultRoleID,
 		VaultSecretID: e.vaultSecretID,
 	}
+
+	err := generateVarsTemplate(vars, "aws", body, repo, filename)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) error {
+	body := `{{ range $k, $v := . }}
+		{{ $k }} = "{{ $v }}"
+		{{ end }}`
+
+	filename := fmt.Sprintf("%s/%s/%s/%s",
+		e.workdir,
+		repo.Name,
+		repo.Path,
+		InputVarsFile,
+	)
+
+	err := generateVarsTemplate(data, "input", body, repo, filename)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// generates a .tfvars file at the specified filename which is used for AWS credentials or loading Terraform input variables
+func generateVarsTemplate[T TfVars | vaultutil.VaultKvData](vars T, name string, body string, repo Repo, filename string) error {
+	tmpl, err := template.New(name).Parse(body)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
 	err = tmpl.Execute(f, vars)
 	if err != nil {
 		return err
@@ -217,7 +252,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 		_, err = tf.Plan(
 			context.Background(),
 			tfexec.Destroy(repo.Delete),
-			tfexec.VarFile(TfVarsFile),
+			tfexec.VarFile(AWSVarsFile),
 			tfexec.Out(planFile), // this plan file will be useful to have in a later improvement as well
 		)
 	} else {
@@ -226,13 +261,13 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 			log.Printf("Performing terraform destroy for %s", repo.Name)
 			err = tf.Destroy(
 				context.Background(),
-				tfexec.VarFile(TfVarsFile),
+				tfexec.VarFile(AWSVarsFile),
 			)
 		} else {
 			log.Printf("Performing terraform apply for %s", repo.Name)
 			err = tf.Apply(
 				context.Background(),
-				tfexec.VarFile(TfVarsFile),
+				tfexec.VarFile(AWSVarsFile),
 			)
 		}
 
