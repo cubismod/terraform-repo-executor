@@ -38,6 +38,7 @@ The application processes the yaml/json defined at `CONFIG_FILE` for determining
   * `variables`: *Variables* - optionally defines Vault paths to [read inputs, write outputs to](https://developer.hashicorp.com/terraform/language/values)
     * `inputs`: *Inputs*
       * `path`: *string* - path in vault to read from
+      * `version`: *integer* - which version of secret to read (ignored for KV1 vault)
     * `outputs`: *Outputs*
       * `path`: *string* - path in vault to write to
 

@@ -31,6 +31,7 @@ type Repo struct {
 	TfVariables TfVariables           `yaml:"variables,omitempty" json:"variables,omitempty"`
 }
 
+// TfVariables are references to Vault paths used for reading/writing inputs and outputs
 type TfVariables struct {
 	Inputs  vaultutil.VaultSecret `yaml:"inputs" json:"inputs"`
 	Outputs vaultutil.VaultSecret `yaml:"outputs" json:"outputs"`

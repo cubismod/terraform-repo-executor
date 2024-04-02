@@ -22,13 +22,20 @@ repos:
   ref: d82b3cb292d91ec2eb26fc282d751555088819f3
   project_path: prod/networking
   delete: false
-  secret:
-    path: terraform/creds/prod-acount
+  aws_creds:
+    path: terraform/creds/prod-account
     version: 4
   bucket: app-sre
   region: us-east-1
   bucket_path: tf-repo
   tf_version: 1.5.7
+  require_fips: true
+  variables:
+    inputs:
+      path: terraform/foo-foo/inputs
+      version: 2
+    outputs:
+      path: terraform/foo-foo/outputs
 `
 		cfgPath := fmt.Sprintf("%s/%s", working, "good.yml")
 		os.WriteFile(cfgPath, []byte(raw), 0644)
@@ -46,14 +53,18 @@ repos:
 					Ref:    "d82b3cb292d91ec2eb26fc282d751555088819f3",
 					Path:   "prod/networking",
 					Delete: false,
-					Secret: vaultutil.VaultSecret{
-						Path:    "terraform/creds/prod-acount",
+					AWSCreds: vaultutil.VaultSecret{
+						Path:    "terraform/creds/prod-account",
 						Version: 4,
 					},
-					Bucket:     "app-sre",
-					BucketPath: "tf-repo",
-					Region:     "us-east-1",
-					TfVersion:  "1.5.7",
+					Bucket:      "app-sre",
+					BucketPath:  "tf-repo",
+					Region:      "us-east-1",
+					TfVersion:   "1.5.7",
+					RequireFips: true,
+					TfVariables: TfVariables{
+						Inputs:  vaultutil.VaultSecret{Path: "terraform/foo-foo/inputs", Version: 2},
+						Outputs: vaultutil.VaultSecret{Path: "terraform/foo-foo/outputs", Version: 0}},
 				},
 			},
 		}
@@ -62,39 +73,48 @@ repos:
 
 	t.Run("valid json returns no error and actual matches expected", func(t *testing.T) {
 		raw := `{
-			"dry_run": true,
-			"repos": [
-			  {
-				"repository": "https://gitlab.myinstance.com/some-gl-group/project_a",
-				"name": "foo-foo",
-				"ref": "d82b3cb292d91ec2eb26fc282d751555088819f3",
-				"project_path": "prod/networking",
-				"delete": false,
-				"secret": {
-				  "path": "terraform/creds/prod-acount",
-				  "version": 4
-				},
-				"bucket": null,
-				"bucket_path": null,
-				"region": null,
-				"tf_version": "1.5.7"
-			  },
-			  {
-				"repository": "https://gitlab.myinstance.com/another-gl-group/project_b",
-				"name": "bar-bar",
-				"ref": "47ef09135da2d158ede78dbbe8c59de1775a274c",
-				"project_path": "stage/network",
-				"delete": true,
-				"secret": {
-				  "path": "terraform/creds/stage-account",
-				  "version": 1
-				},
-				"bucket": "app-sre",
-				"bucket_path": "tf-repo",
-				"region": "us-east-1",
-				"tf_version": "1.4.7"
-			  }
-			]
+            "dry_run": true,
+            "repos": [
+              {
+                "repository": "https://gitlab.myinstance.com/some-gl-group/project_a",
+                "name": "foo-foo",
+                "ref": "d82b3cb292d91ec2eb26fc282d751555088819f3",
+                "project_path": "prod/networking",
+                "delete": false,
+                "aws_creds": {
+                  "path": "terraform/creds/prod-acount",
+                  "version": 4
+                },
+                "bucket": null,
+                "bucket_path": null,
+                "region": null,
+                "tf_version": "1.5.7",
+                "variables": {
+                    "inputs": {
+                        "path": "terraform/foo-foo/inputs",
+                        "version": 2
+                    },
+                    "outputs": {
+                        "path": "terraform/foo-foo/outputs"
+                    }
+                }
+              },
+              {
+                "repository": "https://gitlab.myinstance.com/another-gl-group/project_b",
+                "name": "bar-bar",
+                "ref": "47ef09135da2d158ede78dbbe8c59de1775a274c",
+                "project_path": "stage/network",
+                "delete": true,
+                "aws_creds": {
+                  "path": "terraform/creds/stage-account",
+                  "version": 1
+                },
+                "bucket": "app-sre",
+                "bucket_path": "tf-repo",
+                "region": "us-east-1",
+                "tf_version": "1.4.7"
+              }
+            ]
 }`
 		cfgPath := fmt.Sprintf("%s/%s", working, "good.json")
 		os.WriteFile(cfgPath, []byte(raw), 0644)
@@ -112,7 +132,7 @@ repos:
 					Ref:    "d82b3cb292d91ec2eb26fc282d751555088819f3",
 					Path:   "prod/networking",
 					Delete: false,
-					Secret: vaultutil.VaultSecret{
+					AWSCreds: vaultutil.VaultSecret{
 						Path:    "terraform/creds/prod-acount",
 						Version: 4,
 					},
@@ -120,6 +140,9 @@ repos:
 					BucketPath: "",
 					Region:     "",
 					TfVersion:  "1.5.7",
+					TfVariables: TfVariables{
+						Inputs:  vaultutil.VaultSecret{Path: "terraform/foo-foo/inputs", Version: 2},
+						Outputs: vaultutil.VaultSecret{Path: "terraform/foo-foo/outputs", Version: 0}},
 				},
 				{
 					URL:    "https://gitlab.myinstance.com/another-gl-group/project_b",
@@ -127,7 +150,7 @@ repos:
 					Ref:    "47ef09135da2d158ede78dbbe8c59de1775a274c",
 					Path:   "stage/network",
 					Delete: true,
-					Secret: vaultutil.VaultSecret{
+					AWSCreds: vaultutil.VaultSecret{
 						Path:    "terraform/creds/stage-account",
 						Version: 1,
 					},

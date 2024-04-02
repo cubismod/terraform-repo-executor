@@ -142,7 +142,7 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		VaultSecretID: e.vaultSecretID,
 	}
 
-	err := generateVarsTemplate(vars, "aws", body, repo, filename)
+	err := generateVarsTemplate(vars, "aws", body, filename)
 
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) 
 		InputVarsFile,
 	)
 
-	err := generateVarsTemplate(data, "input", body, repo, filename)
+	err := generateVarsTemplate(data, "input", body, filename)
 
 	if err != nil {
 		return err
@@ -173,7 +173,7 @@ func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) 
 }
 
 // generates a .tfvars file at the specified filename which is used for AWS credentials or loading Terraform input variables
-func generateVarsTemplate[T TfVars | vaultutil.VaultKvData](vars T, name string, body string, repo Repo, filename string) error {
+func generateVarsTemplate[T TfVars | vaultutil.VaultKvData](vars T, name string, body string, filename string) error {
 	tmpl, err := template.New(name).Parse(body)
 	if err != nil {
 		return err
