@@ -142,9 +142,16 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		}
 	}
 
-	err = e.processTfPlan(repo, dryRun)
+	output, err := e.processTfPlan(repo, dryRun)
 	if err != nil {
 		return err
+	}
+
+	if len(output) > 0 && repo.TfVariables.Outputs.Path != "" {
+		err = vaultutil.WriteOutputs(vaultClient, repo.TfVariables.Outputs, output)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

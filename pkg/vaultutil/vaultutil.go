@@ -3,8 +3,10 @@ package vaultutil
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
+	"github.com/hashicorp/terraform-exec/tfexec"
 	vault "github.com/hashicorp/vault/api"
 )
 
@@ -49,6 +51,27 @@ func InitVaultClient(addr, roleID, secretID string) (*vault.Client, error) {
 	client.SetToken(secret.Auth.ClientToken)
 
 	return client, nil
+}
+
+// WriteOutputs takes any output values from a Terraform apply and then writes them into Vault
+func WriteOutputs(client *vault.Client, secretInfo VaultSecret, data map[string]tfexec.OutputMeta) error {
+	log.Printf("Writing Output values from Terraform Apply to %s in Vault", secretInfo.Path)
+	secretData := make(map[string]interface{})
+
+	for k, v := range data {
+		secretData[k] = v.Value
+	}
+
+	_, err := WriteVaultSecret(client, secretInfo, secretData)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// WriteVaultSecret writes a map of KV pairs to Vault at the specified path
+func WriteVaultSecret(client *vault.Client, secretInfo VaultSecret, data map[string]interface{}) (*vault.Secret, error) {
+	return client.Logical().Write(secretInfo.Path, data)
 }
 
 // GetVaultTfSecret retrieves the contents of a secret in Vault

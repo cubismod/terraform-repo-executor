@@ -62,9 +62,10 @@ func extractTfCreds(secret vaultutil.VaultKvData, repo Repo) (TfCreds, error) {
 }
 
 // terraform specific filenames
+// the "auto" vars files will automatically be loaded by the tf binary
 const (
-	AWSVarsFile   = "aws.tfvars"
-	InputVarsFile = "input.tfvars"
+	AWSVarsFile   = "aws.auto.tfvars"
+	InputVarsFile = "input.auto.tfvars"
 	BackendFile   = "s3.tfbackend"
 )
 
@@ -220,16 +221,17 @@ func (e *Executor) fipsComplianceCheck(repo Repo, planFile string, tf *tfexec.Te
 	return nil
 }
 
-// executes target tf plan
-func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
+// performs a terraform plan and then apply if not running in dry run mode
+// additionally captures any tf outputs if necessary
+func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.OutputMeta, error) {
 	dir := fmt.Sprintf("%s/%s/%s", e.workdir, repo.Name, repo.Path)
 
-	/// each repo can use a different version of the TF binary, specified in App Interface
+	// each repo can use a different version of the TF binary, specified in App Interface
 	tfBinaryLocation := fmt.Sprintf("/usr/bin/Terraform/%s/terraform", repo.TfVersion)
 
 	tf, err := tfexec.NewTerraform(dir, tfBinaryLocation)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Printf("Initializing terraform config for %s\n", repo.Name)
@@ -238,7 +240,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 		tfexec.BackendConfig(BackendFile),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -252,7 +254,6 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 		_, err = tf.Plan(
 			context.Background(),
 			tfexec.Destroy(repo.Delete),
-			tfexec.VarFile(AWSVarsFile),
 			tfexec.Out(planFile), // this plan file will be useful to have in a later improvement as well
 		)
 	} else {
@@ -261,19 +262,28 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 			log.Printf("Performing terraform destroy for %s", repo.Name)
 			err = tf.Destroy(
 				context.Background(),
-				tfexec.VarFile(AWSVarsFile),
 			)
 		} else {
 			log.Printf("Performing terraform apply for %s", repo.Name)
 			err = tf.Apply(
 				context.Background(),
-				tfexec.VarFile(AWSVarsFile),
 			)
+
+			if repo.TfVariables.Outputs.Path != "" {
+				log.Printf("Capturing Output values to save to %s in Vault", repo.TfVariables.Outputs.Path)
+				output, err := tf.Output(
+					context.Background(),
+				)
+				if err != nil {
+					return nil, err
+				}
+				return output, nil
+			}
 		}
 
 	}
 	if err != nil {
-		return errors.New(stderr.String())
+		return nil, errors.New(stderr.String())
 	}
 
 	log.Printf("Output for %s\n", repo.Name)
@@ -282,9 +292,9 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 	if repo.RequireFips && dryRun {
 		err := e.fipsComplianceCheck(repo, planFile, tf)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return nil, nil
 }
