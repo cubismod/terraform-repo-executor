@@ -18,7 +18,7 @@ type TfCreds struct {
 	AccessKey string
 	SecretKey string
 	Region    string
-	Key       string
+	Key       string // set when initializing backend
 	Bucket    string
 }
 
@@ -78,25 +78,8 @@ func (e *Executor) generateBackendFile(creds TfCreds, repo Repo) error {
 		{{- "\n"}}key = "{{.Key}}"
 		{{- "\n"}}bucket = "{{.Bucket}}"`
 
-	tmpl, err := template.New("backend").Parse(backendTemplate)
-	if err != nil {
-		return err
-	}
+	err := writeTemplate(creds, backendTemplate, BackendFile, e.workdir, repo)
 
-	f, err := os.Create(
-		fmt.Sprintf("%s/%s/%s/%s",
-			e.workdir,
-			repo.Name,
-			repo.Path,
-			BackendFile,
-		),
-	)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	err = tmpl.Execute(f, creds)
 	if err != nil {
 		return err
 	}
@@ -126,13 +109,6 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		{{- "\n"}}vault_role_id = "{{.VaultRoleId}}"
 		{{- "\n"}}vault_secret_id = "{{.VaultSecretId}}"`
 
-	filename := fmt.Sprintf("%s/%s/%s/%s",
-		e.workdir,
-		repo.Name,
-		repo.Path,
-		AWSVarsFile,
-	)
-
 	vars := TfVars{
 		AccessKey:     creds.AccessKey,
 		SecretKey:     creds.SecretKey,
@@ -142,7 +118,7 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		VaultSecretID: e.vaultSecretID,
 	}
 
-	err := generateVarsTemplate(vars, "aws", body, filename)
+	err := writeTemplate(vars, body, AWSVarsFile, e.workdir, repo)
 
 	if err != nil {
 		return err
@@ -156,14 +132,7 @@ func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) 
 		{{ $k }} = "{{ $v }}"
 		{{ end }}`
 
-	filename := fmt.Sprintf("%s/%s/%s/%s",
-		e.workdir,
-		repo.Name,
-		repo.Path,
-		InputVarsFile,
-	)
-
-	err := generateVarsTemplate(data, "input", body, filename)
+	err := writeTemplate(data, body, InputVarsFile, e.workdir, repo)
 
 	if err != nil {
 		return err
@@ -172,14 +141,17 @@ func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) 
 	return nil
 }
 
-// generates a .tfvars file at the specified filename which is used for AWS credentials or loading Terraform input variables
-func generateVarsTemplate[T TfVars | vaultutil.VaultKvData](vars T, name string, body string, filename string) error {
-	tmpl, err := template.New(name).Parse(body)
+// helper function responsible for templating a file and writing it to disk
+// note that this is not a struct method as generics are incompatible with methods
+func writeTemplate[T TfVars | vaultutil.VaultKvData | TfCreds](vars T, body string, filename string, workdir string, repo Repo) error {
+	tmpl, err := template.New(filename).Parse(body)
 	if err != nil {
 		return err
 	}
 
-	f, err := os.Create(filename)
+	templatePath := fmt.Sprintf("%s/%s/%s/%s", workdir, repo.Name, repo.Path, filename)
+
+	f, err := os.Create(templatePath)
 	if err != nil {
 		return err
 	}
