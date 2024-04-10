@@ -8,6 +8,8 @@ PKGS				:= $(shell go list ./... | grep -v -E '/vendor/|/test')
 FIRST_GOPATH		:= $(firstword $(subst :, ,$(shell go env GOPATH)))
 CONTAINER_ENGINE    ?= $(shell which podman >/dev/null 2>&1 && echo podman || echo docker)
 
+CTR_STRUCTURE_IMG := quay.io/app-sre/container-structure-test:latest
+
 ifneq (,$(wildcard $(CURDIR)/.docker))
 	DOCKER_CONF := $(CURDIR)/.docker
 else
@@ -72,10 +74,21 @@ staticcheck:
 	go install honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION)
 	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
 
+test: test-app test-container-image
+
 .PHONY: vet
-vet: test
+vet: test-app
 	go vet ./...
 
-.PHONY: test
-test:
+.PHONY: test-app
+test-app:
 	CGO_ENABLED=0 GOOS=$(GOOS) go test -v ./...
+
+.PHONY: test-container-image
+test-container-image: image
+	@$(CONTAINER_ENGINE) run --rm \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(CURDIR):/work \
+		$(CTR_STRUCTURE_IMG) test \
+		--config /work/structure-test.yaml \
+		-i $(REPO):$(TAG)

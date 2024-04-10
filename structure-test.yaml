@@ -1,0 +1,41 @@
+schemaVersion: 2.0.0
+
+fileExistenceTests:
+- name: terraform-repo-executor
+  path: /usr/bin/terraform-repo-executor
+  shouldExist: true
+  permissions: -rwxr-xr-x
+  uid: 0
+  gid: 0
+  isExecutableBy: other
+
+- name: terraform-1.4.5
+  path: /usr/bin/Terraform/1.4.5/terraform
+  shouldExist: true
+  permissions: -rwxr-xr-x
+  uid: 0
+  gid: 0
+  isExecutableBy: other
+
+- name: terraform-1.4.7
+  path: /usr/bin/Terraform/1.4.7/terraform
+  shouldExist: true
+  permissions: -rwxr-xr-x
+  uid: 0
+  gid: 0
+  isExecutableBy: other
+
+- name: terraform-1.5.7
+  path: /usr/bin/Terraform/1.5.7/terraform
+  shouldExist: true
+  permissions: -rwxr-xr-x
+  uid: 0
+  gid: 0
+  isExecutableBy: other
+
+
+commandTests:
+  - name: Git
+    command: git
+    args: ['help']
+    expectedOutput: ['usage: git']
