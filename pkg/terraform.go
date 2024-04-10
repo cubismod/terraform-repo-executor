@@ -78,7 +78,7 @@ func (e *Executor) generateBackendFile(creds TfCreds, repo Repo) error {
 		{{- "\n"}}key = "{{.Key}}"
 		{{- "\n"}}bucket = "{{.Bucket}}"`
 
-	err := writeTemplate(creds, backendTemplate, BackendFile, e.workdir, repo)
+	err := WriteTemplate(creds, backendTemplate, BackendFile, e.workdir, repo)
 
 	if err != nil {
 		return err
@@ -97,10 +97,8 @@ type TfVars struct {
 	VaultSecretID string
 }
 
-// generates .tfvars file to be utilized for input variables to a specific tf plan
-// the generated .tfvars file will provide credentials for the aws and vault providers
-// of the plan
-func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
+// generates a .tfvars file including Vault & S3 backend credentials
+func (e *Executor) generateCredVarsFile(creds TfCreds, repo Repo) error {
 	// first create a *.tfvars file for S3 backend credentials
 	body := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
@@ -109,7 +107,7 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		{{- "\n"}}vault_role_id = "{{.VaultRoleId}}"
 		{{- "\n"}}vault_secret_id = "{{.VaultSecretId}}"`
 
-	vars := TfVars{
+	tfVars := TfVars{
 		AccessKey:     creds.AccessKey,
 		SecretKey:     creds.SecretKey,
 		Region:        creds.Region,
@@ -118,7 +116,7 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		VaultSecretID: e.vaultSecretID,
 	}
 
-	err := writeTemplate(vars, body, AWSVarsFile, e.workdir, repo)
+	err := WriteTemplate(tfVars, body, AWSVarsFile, e.workdir, repo)
 
 	if err != nil {
 		return err
@@ -127,12 +125,11 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 	return nil
 }
 
+// generates a .tfvars file including input variables from Vault
 func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) error {
-	body := `{{ range $k, $v := . }}
-		{{ $k }} = "{{ $v }}"
-		{{ end }}`
+	body := `{{ range $k, $v := . }}{{ $k }} = "{{ $v }}"{{- "\n"}}{{ end }}`
 
-	err := writeTemplate(data, body, InputVarsFile, e.workdir, repo)
+	err := WriteTemplate(data, body, InputVarsFile, e.workdir, repo)
 
 	if err != nil {
 		return err
@@ -143,7 +140,7 @@ func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) 
 
 // helper function responsible for templating a file and writing it to disk
 // note that this is not a struct method as generics are incompatible with methods
-func writeTemplate[T TfVars | vaultutil.VaultKvData | TfCreds](vars T, body string, filename string, workdir string, repo Repo) error {
+func WriteTemplate[T TfVars | vaultutil.VaultKvData | TfCreds](inputs T, body string, filename string, workdir string, repo Repo) error {
 	tmpl, err := template.New(filename).Parse(body)
 	if err != nil {
 		return err
@@ -157,7 +154,7 @@ func writeTemplate[T TfVars | vaultutil.VaultKvData | TfCreds](vars T, body stri
 	}
 	defer f.Close()
 
-	err = tmpl.Execute(f, vars)
+	err = tmpl.Execute(f, inputs)
 	if err != nil {
 		return err
 	}

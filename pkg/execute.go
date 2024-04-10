@@ -125,7 +125,7 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	err = e.generateTfVarsFile(backendCreds, repo)
+	err = e.generateCredVarsFile(backendCreds, repo)
 	if err != nil {
 		return err
 	}

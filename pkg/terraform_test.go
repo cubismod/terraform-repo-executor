@@ -1,6 +1,8 @@
 package pkg
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
@@ -36,13 +38,12 @@ var repoWithoutExplicitBucketSettings = Repo{
 }
 
 func TestExtractTfCreds(t *testing.T) {
-	credsSecret := vaultutil.VaultKvData{
+	exampleTfCreds := vaultutil.VaultKvData{
 		AwsAccessKeyID:     accessKey,
 		AwsSecretAccessKey: secretKey,
 		AwsRegion:          region,
 		AwsBucket:          bucket,
 	}
-
 	t.Run("credentials are extracted successfully when all fields present", func(t *testing.T) {
 		expected := TfCreds{
 			AccessKey: accessKey,
@@ -51,7 +52,7 @@ func TestExtractTfCreds(t *testing.T) {
 			Bucket:    bucket,
 		}
 
-		creds, err := extractTfCreds(credsSecret, repoWithoutExplicitBucketSettings)
+		creds, err := extractTfCreds(exampleTfCreds, repoWithoutExplicitBucketSettings)
 
 		assert.Nil(t, err)
 		assert.Equal(t, expected, creds)
@@ -84,7 +85,7 @@ func TestExtractTfCreds(t *testing.T) {
 			Region:      explicitRegion,
 		}
 
-		creds, err := extractTfCreds(credsSecret, repoWithExplicitBucketSettings)
+		creds, err := extractTfCreds(exampleTfCreds, repoWithExplicitBucketSettings)
 
 		assert.Nil(t, err)
 		assert.Equal(t, expected, creds)
@@ -101,4 +102,67 @@ func TestExtractTfCreds(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+}
+
+func TestWriteTemplate(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "template")
+
+	assert.Nil(t, err)
+
+	// create the directory that would normally be created when cloning the repo
+	repoDir := fmt.Sprintf("%s/%s/%s", tmpDir,
+		repoWithoutExplicitBucketSettings.Name,
+		repoWithoutExplicitBucketSettings.Path)
+	err = os.MkdirAll(repoDir, 0770)
+
+	assert.Nil(t, err)
+
+	defer os.RemoveAll(tmpDir)
+
+	t.Run("generate a backend file successfully", func(t *testing.T) {
+		backendCreds := TfCreds{
+			AccessKey: accessKey,
+			SecretKey: secretKey,
+			Region:    region,
+			Key:       "a-repo-tf-repo.tfstate",
+			Bucket:    bucket,
+		}
+		body := `access_key = "{{.AccessKey}}"
+			{{- "\n"}}secret_key = "{{.SecretKey}}"
+			{{- "\n"}}region = "{{.Region}}"
+			{{- "\n"}}key = "{{.Key}}"
+			{{- "\n"}}bucket = "{{.Bucket}}"`
+
+		err := WriteTemplate(backendCreds, body, BackendFile, tmpDir, repoWithoutExplicitBucketSettings)
+
+		assert.Nil(t, err)
+
+		expected, err := os.ReadFile("../test/data/s3.tfbackend")
+		assert.Nil(t, err)
+
+		output, err := os.ReadFile(fmt.Sprintf("%s/%s", repoDir, BackendFile))
+		assert.Nil(t, err)
+
+		assert.Equal(t, string(expected), string(output))
+	})
+
+	t.Run("generate an input tfvars file successfully", func(t *testing.T) {
+		inputSecret := vaultutil.VaultKvData{
+			"foo": "bar",
+			"bar": "bell",
+		}
+		body := `{{ range $k, $v := . }}{{ $k }} = "{{ $v }}"{{- "\n"}}{{ end }}`
+
+		err := WriteTemplate(inputSecret, body, InputVarsFile, tmpDir, repoWithoutExplicitBucketSettings)
+
+		assert.Nil(t, err)
+
+		expected, err := os.ReadFile("../test/data/input.auto.tfvars")
+		assert.Nil(t, err)
+
+		output, err := os.ReadFile(fmt.Sprintf("%s/%s", repoDir, InputVarsFile))
+		assert.Nil(t, err)
+
+		assert.Equal(t, string(expected), string(output))
+	})
 }
