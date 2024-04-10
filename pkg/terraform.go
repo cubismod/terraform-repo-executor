@@ -138,7 +138,7 @@ func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) 
 	return nil
 }
 
-// helper function responsible for templating a file and writing it to disk
+// WriteTemplate is responsible for templating a file and writing it to disk
 // note that this is not a struct method as generics are incompatible with methods
 func WriteTemplate[T TfVars | vaultutil.VaultKvData | TfCreds](inputs T, body string, filename string, workdir string, repo Repo) error {
 	tmpl, err := template.New(filename).Parse(body)

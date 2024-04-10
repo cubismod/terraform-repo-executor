@@ -16,7 +16,7 @@ const (
 	region      = "us-east-1"
 	bucket      = "app-sre"
 	repoName    = "a-repo"
-	repoUrl     = "https://gitlab.myinstance.com/some-gl-group/project_a"
+	repoURL     = "https://gitlab.myinstance.com/some-gl-group/project_a"
 	repoPath    = "prod/networking"
 	repoRef     = "d82b3cb292d91ec2eb26fc282d751555088819f3"
 	awsCredPath = "terraform/creds/prod-account"
@@ -25,7 +25,7 @@ const (
 
 var repoWithoutExplicitBucketSettings = Repo{
 	Name:   repoName,
-	URL:    repoUrl,
+	URL:    repoURL,
 	Path:   repoPath,
 	Ref:    repoRef,
 	Delete: false,
@@ -71,7 +71,7 @@ func TestExtractTfCreds(t *testing.T) {
 
 		repoWithExplicitBucketSettings := Repo{
 			Name:   repoName,
-			URL:    repoUrl,
+			URL:    repoURL,
 			Path:   repoPath,
 			Ref:    repoRef,
 			Delete: false,
