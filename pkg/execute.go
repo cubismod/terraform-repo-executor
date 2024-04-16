@@ -4,6 +4,7 @@ package pkg
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 	vault "github.com/hashicorp/vault/api"
@@ -56,9 +57,9 @@ func Run(cfgPath,
 	kvVersion string) error {
 
 	// clear working directory upon exit
-	defer executeCommand("/", "rm", []string{"-rf", workdir})
+	defer os.RemoveAll(workdir)
 
-	_, err := executeCommand("/", "mkdir", []string{workdir})
+	err := os.Mkdir(workdir, 0770)
 	if err != nil {
 		return err
 	}
