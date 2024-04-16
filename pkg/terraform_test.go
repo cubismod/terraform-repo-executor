@@ -9,10 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// examples taken from https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html
 const (
-	accessKey   = "AKIAIOSFODNN7EXAMPLE"
-	secretKey   = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+	accessKey   = "fake_access_key"
+	secretKey   = "fake_secret_key"
 	region      = "us-east-1"
 	bucket      = "app-sre"
 	repoName    = "a-repo"
