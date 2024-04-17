@@ -18,7 +18,7 @@ type TfCreds struct {
 	AccessKey string
 	SecretKey string
 	Region    string
-	Key       string
+	Key       string // set when initializing backend
 	Bucket    string
 }
 
@@ -62,9 +62,11 @@ func extractTfCreds(secret vaultutil.VaultKvData, repo Repo) (TfCreds, error) {
 }
 
 // terraform specific filenames
+// the "auto" vars files will automatically be loaded by the tf binary
 const (
-	TfVarsFile  = "plan.tfvars"
-	BackendFile = "s3.tfbackend"
+	AWSVarsFile   = "aws.auto.tfvars"
+	InputVarsFile = "input.auto.tfvars"
+	BackendFile   = "s3.tfbackend"
 )
 
 // generates a .tfbackend file to be utilized as partial backend config input file
@@ -76,25 +78,8 @@ func (e *Executor) generateBackendFile(creds TfCreds, repo Repo) error {
 		{{- "\n"}}key = "{{.Key}}"
 		{{- "\n"}}bucket = "{{.Bucket}}"`
 
-	tmpl, err := template.New("backend").Parse(backendTemplate)
-	if err != nil {
-		return err
-	}
+	err := WriteTemplate(creds, backendTemplate, BackendFile, e.workdir, repo)
 
-	f, err := os.Create(
-		fmt.Sprintf("%s/%s/%s/%s",
-			e.workdir,
-			repo.Name,
-			repo.Path,
-			BackendFile,
-		),
-	)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	err = tmpl.Execute(f, creds)
 	if err != nil {
 		return err
 	}
@@ -112,36 +97,17 @@ type TfVars struct {
 	VaultSecretID string
 }
 
-// generates .tfvars file to be utilized for input variables to a specific tf plan
-// the generated .tfvars file will provide credentials for the aws and vault providers
-// of the plan
-func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
-	varsTemplate := `access_key = "{{.AccessKey}}"
+// generates a .tfvars file including Vault & S3 backend credentials
+func (e *Executor) generateCredVarsFile(creds TfCreds, repo Repo) error {
+	// first create a *.tfvars file for S3 backend credentials
+	body := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
 		{{- "\n"}}region = "{{.Region}}"
 		{{- "\n"}}vault_addr = "{{.VaultAddress}}"
 		{{- "\n"}}vault_role_id = "{{.VaultRoleId}}"
 		{{- "\n"}}vault_secret_id = "{{.VaultSecretId}}"`
 
-	tmpl, err := template.New("tfvars").Parse(varsTemplate)
-	if err != nil {
-		return err
-	}
-
-	f, err := os.Create(
-		fmt.Sprintf("%s/%s/%s/%s",
-			e.workdir,
-			repo.Name,
-			repo.Path,
-			TfVarsFile,
-		),
-	)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	vars := TfVars{
+	tfVars := TfVars{
 		AccessKey:     creds.AccessKey,
 		SecretKey:     creds.SecretKey,
 		Region:        creds.Region,
@@ -149,7 +115,46 @@ func (e *Executor) generateTfVarsFile(creds TfCreds, repo Repo) error {
 		VaultRoleID:   e.vaultRoleID,
 		VaultSecretID: e.vaultSecretID,
 	}
-	err = tmpl.Execute(f, vars)
+
+	err := WriteTemplate(tfVars, body, AWSVarsFile, e.workdir, repo)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// generates a .tfvars file including input variables from Vault
+func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) error {
+	body := `{{ range $k, $v := . }}{{ $k }} = "{{ $v }}"{{- "\n"}}{{ end }}`
+
+	err := WriteTemplate(data, body, InputVarsFile, e.workdir, repo)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// WriteTemplate is responsible for templating a file and writing it to disk
+// note that this is not a struct method as generics are incompatible with methods
+func WriteTemplate[T TfVars | vaultutil.VaultKvData | TfCreds](inputs T, body string, filename string, workdir string, repo Repo) error {
+	tmpl, err := template.New(filename).Parse(body)
+	if err != nil {
+		return err
+	}
+
+	templatePath := fmt.Sprintf("%s/%s/%s/%s", workdir, repo.Name, repo.Path, filename)
+
+	f, err := os.Create(templatePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	err = tmpl.Execute(f, inputs)
 	if err != nil {
 		return err
 	}
@@ -185,12 +190,17 @@ func (e *Executor) fipsComplianceCheck(repo Repo, planFile string, tf *tfexec.Te
 	return nil
 }
 
-// executes target tf plan
-func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
+// performs a terraform plan and then apply if not running in dry run mode
+// additionally captures any tf outputs if necessary
+func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.OutputMeta, error) {
 	dir := fmt.Sprintf("%s/%s/%s", e.workdir, repo.Name, repo.Path)
-	tf, err := tfexec.NewTerraform(dir, "terraform")
+
+	// each repo can use a different version of the TF binary, specified in App Interface
+	tfBinaryLocation := fmt.Sprintf("/usr/bin/Terraform/%s/terraform", repo.TfVersion)
+
+	tf, err := tfexec.NewTerraform(dir, tfBinaryLocation)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Printf("Initializing terraform config for %s\n", repo.Name)
@@ -199,7 +209,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 		tfexec.BackendConfig(BackendFile),
 	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var stdout, stderr bytes.Buffer
@@ -213,7 +223,6 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 		_, err = tf.Plan(
 			context.Background(),
 			tfexec.Destroy(repo.Delete),
-			tfexec.VarFile(TfVarsFile),
 			tfexec.Out(planFile), // this plan file will be useful to have in a later improvement as well
 		)
 	} else {
@@ -222,19 +231,28 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 			log.Printf("Performing terraform destroy for %s", repo.Name)
 			err = tf.Destroy(
 				context.Background(),
-				tfexec.VarFile(TfVarsFile),
 			)
 		} else {
 			log.Printf("Performing terraform apply for %s", repo.Name)
 			err = tf.Apply(
 				context.Background(),
-				tfexec.VarFile(TfVarsFile),
 			)
+
+			if repo.TfVariables.Outputs.Path != "" {
+				log.Printf("Capturing Output values to save to %s in Vault", repo.TfVariables.Outputs.Path)
+				output, err := tf.Output(
+					context.Background(),
+				)
+				if err != nil {
+					return nil, err
+				}
+				return output, nil
+			}
 		}
 
 	}
 	if err != nil {
-		return errors.New(stderr.String())
+		return nil, errors.New(stderr.String())
 	}
 
 	log.Printf("Output for %s\n", repo.Name)
@@ -243,9 +261,9 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) error {
 	if repo.RequireFips && dryRun {
 		err := e.fipsComplianceCheck(repo, planFile, tf)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return nil, nil
 }

@@ -4,6 +4,7 @@ package pkg
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 	vault "github.com/hashicorp/vault/api"
@@ -22,11 +23,19 @@ type Repo struct {
 	Path        string                `yaml:"project_path" json:"project_path"`
 	Ref         string                `yaml:"ref" json:"ref"`
 	Delete      bool                  `yaml:"delete" json:"delete"`
-	Secret      vaultutil.VaultSecret `yaml:"secret" json:"secret"`
+	AWSCreds    vaultutil.VaultSecret `yaml:"aws_creds" json:"aws_creds"`
 	Bucket      string                `yaml:"bucket,omitempty" json:"bucket,omitempty"`
 	Region      string                `yaml:"region,omitempty" json:"region,omitempty"`
 	BucketPath  string                `yaml:"bucket_path,omitempty" json:"bucket_path,omitempty"`
 	RequireFips bool                  `yaml:"require_fips" json:"require_fips"`
+	TfVersion   string                `yaml:"tf_version" json:"tf_version"`
+	TfVariables TfVariables           `yaml:"variables,omitempty" json:"variables,omitempty"`
+}
+
+// TfVariables are references to Vault paths used for reading/writing inputs and outputs
+type TfVariables struct {
+	Inputs  vaultutil.VaultSecret `yaml:"inputs" json:"inputs"`
+	Outputs vaultutil.VaultSecret `yaml:"outputs" json:"outputs"`
 }
 
 // Executor includes required secrets and variables to perform a tf repo executor run
@@ -48,9 +57,9 @@ func Run(cfgPath,
 	kvVersion string) error {
 
 	// clear working directory upon exit
-	defer executeCommand("/", "rm", []string{"-rf", workdir})
+	defer os.RemoveAll(workdir)
 
-	_, err := executeCommand("/", "mkdir", []string{workdir})
+	err := os.Mkdir(workdir, 0770)
 	if err != nil {
 		return err
 	}
@@ -97,7 +106,7 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.Secret, e.vaultTfKvVersion)
+	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.AWSCreds, e.vaultTfKvVersion)
 	if err != nil {
 		return err
 	}
@@ -117,14 +126,34 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	err = e.generateTfVarsFile(backendCreds, repo)
+	err = e.generateCredVarsFile(backendCreds, repo)
 	if err != nil {
 		return err
 	}
 
-	err = e.processTfPlan(repo, dryRun)
+	if repo.TfVariables.Inputs.Path != "" {
+		// extract kv pairs from vault for inputs and write them to a file for terraform usage
+		inputSecret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.TfVariables.Inputs, e.vaultTfKvVersion)
+		if err != nil {
+			return err
+		}
+
+		err = e.generateInputVarsFile(inputSecret, repo)
+		if err != nil {
+			return err
+		}
+	}
+
+	output, err := e.processTfPlan(repo, dryRun)
 	if err != nil {
 		return err
+	}
+
+	if len(output) > 0 && repo.TfVariables.Outputs.Path != "" {
+		err = vaultutil.WriteOutputs(vaultClient, repo.TfVariables.Outputs, output)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
