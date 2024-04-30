@@ -7,6 +7,7 @@ TAG					:= $(shell git rev-parse --short HEAD)
 PKGS				:= $(shell go list ./... | grep -v -E '/vendor/|/test')
 FIRST_GOPATH		:= $(firstword $(subst :, ,$(shell go env GOPATH)))
 CONTAINER_ENGINE    ?= $(shell which podman >/dev/null 2>&1 && echo podman || echo docker)
+GOOS := $(shell go env GOOS)
 
 CTR_STRUCTURE_IMG := quay.io/app-sre/container-structure-test:latest
 
@@ -30,7 +31,7 @@ clean:
 
 .PHONY: build
 build: vet
-	go build -o $(NAME) .
+	CGO_ENABLED=0 GOOS=$(GOOS) go build -o $(NAME) .
 
 .PHONY: image
 image:
