@@ -98,14 +98,15 @@ type TfVars struct {
 }
 
 // generates a .tfvars file including Vault & S3 backend credentials
+// TODO: add test case around this function
 func (e *Executor) generateCredVarsFile(creds TfCreds, repo Repo) error {
 	// first create a *.tfvars file for S3 backend credentials
 	body := `access_key = "{{.AccessKey}}"
 		{{- "\n"}}secret_key = "{{.SecretKey}}"
 		{{- "\n"}}region = "{{.Region}}"
 		{{- "\n"}}vault_addr = "{{.VaultAddress}}"
-		{{- "\n"}}vault_role_id = "{{.VaultRoleId}}"
-		{{- "\n"}}vault_secret_id = "{{.VaultSecretId}}"`
+		{{- "\n"}}vault_role_id = "{{.VaultRoleID}}"
+		{{- "\n"}}vault_secret_id = "{{.VaultSecretID}}"`
 
 	tfVars := TfVars{
 		AccessKey:     creds.AccessKey,
