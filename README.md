@@ -55,6 +55,7 @@ repos:
   ref: d82b3cb292d91ec2eb26fc282d751555088819f3
   project_path: prod/networking
   delete: false
+  tf_version: "1.5.7"
   aws_creds:
     path: terraform/creds/prod-acount
     version: 4
@@ -68,6 +69,7 @@ repos:
   ref: 47ef09135da2d158ede78dbbe8c59de1775a274c
   project_path: stage/rds
   delete: false
+  tf_version: "1.5.7"
   aws_creds:
     path: terraform/creds/stage-account
     version: 1
