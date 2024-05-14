@@ -34,7 +34,7 @@ set -euo pipefail
 
 which container-structure-test && CST=$(which container-structure-test) || CST=""
 CST_VERSION="v1.17.0"
-CST_TEST_FILE=$CURDIR/dockerfiles/structure-test.yaml
+CST_TEST_FILE=$CURDIR/structure-test.yaml
 PLATFORM=$(uname)
 
 check_cst_binary() {
