@@ -87,9 +87,9 @@ test-app:
 
 .PHONY: test-container-image
 test-container-image: image
-	@$(CONTAINER_ENGINE) run --rm \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		-v $(CURDIR):/work \
-		$(CTR_STRUCTURE_IMG) test \
-		--config /work/structure-test.yaml \
-		-i $(REPO):$(TAG)
+	@CONTAINER_ENGINE=$(CONTAINER_ENGINE) \
+	CTR_STRUCTURE_IMG=$(CTR_STRUCTURE_IMG) \
+	CURDIR=$(CURDIR) \
+	IMAGE_NAME=$(REPO) \
+	IMAGE_TAG=$(TAG) \
+	$(CURDIR)/run-test-container-image.sh
