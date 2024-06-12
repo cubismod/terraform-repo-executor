@@ -218,6 +218,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 	tf.SetStderr(&stderr)
 
 	planFile := fmt.Sprintf("%s/%s-plan", e.workdir, repo.Name)
+	var output map[string]tfexec.OutputMeta
 
 	if dryRun {
 		log.Printf("Performing terraform plan for %s", repo.Name)
@@ -241,13 +242,9 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 
 			if repo.TfVariables.Outputs.Path != "" {
 				log.Printf("Capturing Output values to save to %s in Vault", repo.TfVariables.Outputs.Path)
-				output, err := tf.Output(
+				output, err = tf.Output(
 					context.Background(),
 				)
-				if err != nil {
-					return nil, err
-				}
-				return output, nil
 			}
 		}
 
@@ -260,11 +257,11 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 	log.Println(stdout.String())
 
 	if repo.RequireFips && dryRun {
-		err := e.fipsComplianceCheck(repo, planFile, tf)
+		err = e.fipsComplianceCheck(repo, planFile, tf)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return nil, nil
+	return output, nil
 }

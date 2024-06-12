@@ -1,12 +1,14 @@
 package vaultutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/hashicorp/terraform-exec/tfexec"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 )
@@ -101,4 +103,52 @@ func TestGetVaultTfSecretV1(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, actual)
+}
+
+func TestWriteVaultOutputs(t *testing.T) {
+	type payload struct {
+		VPCID string `json:"vpc_id"`
+	}
+
+	type data struct {
+		Data payload `json:"data"`
+	}
+
+	planOutput := map[string]tfexec.OutputMeta{
+		"vpc_id": {
+			Sensitive: false,
+			Type:      json.RawMessage(`string`),
+			Value:     json.RawMessage(`"vpc-22fd8eb8"`),
+		},
+	}
+
+	expectedBody := data{
+		Data: payload{
+			VPCID: "vpc-22fd8eb8",
+		},
+	}
+
+	vaultMock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var decoded data
+		err := json.NewDecoder(r.Body).Decode(&decoded)
+
+		assert.Nil(t, err)
+
+		assert.Equal(t, "/v1/terraform/data/stage/outputs", r.URL.Path)
+		assert.Equal(t, expectedBody, decoded)
+		// function doesn't care about the returned info just that there is no error
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"hello": "world"})
+	}))
+
+	defer vaultMock.Close()
+	client, _ := vault.NewClient(&vault.Config{
+		Address: vaultMock.URL,
+	})
+
+	err := WriteOutputs(client, VaultSecret{
+		Path: "terraform/stage/outputs",
+	}, planOutput, KvV2)
+
+	assert.Nil(t, err)
 }
