@@ -62,7 +62,6 @@ func WriteOutputs(client *vault.Client, secretInfo VaultSecret, data map[string]
 
 	for k, v := range data {
 		if v.Value[0] == '"' {
-			// unquote the value as hashicorp seems to like quotes
 			value, err := strconv.Unquote(string(v.Value[:]))
 			if err != nil {
 				return err

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -107,7 +108,8 @@ func TestGetVaultTfSecretV1(t *testing.T) {
 
 func TestWriteVaultOutputs(t *testing.T) {
 	type payload struct {
-		VPCID string `json:"vpc_id"`
+		VPCID               string `json:"vpc_id"`
+		UnquotedSensitiveID string `json:"unquoted_sensitive_id"`
 	}
 
 	type data struct {
@@ -120,23 +122,41 @@ func TestWriteVaultOutputs(t *testing.T) {
 			Type:      json.RawMessage(`string`),
 			Value:     json.RawMessage(`"vpc-22fd8eb8"`),
 		},
-	}
-
-	expectedBody := data{
-		Data: payload{
-			VPCID: "vpc-22fd8eb8",
+		"unquoted_sensitive_id": {
+			Sensitive: true,
+			Type:      json.RawMessage(`string`),
+			Value:     json.RawMessage(`massivesecret`),
 		},
 	}
 
 	vaultMock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var decoded data
-		err := json.NewDecoder(r.Body).Decode(&decoded)
+		body := payload{
+			VPCID:               "vpc-22fd8eb8",
+			UnquotedSensitiveID: "massivesecret",
+		}
 
-		assert.Nil(t, err)
+		assert.Contains(t, r.URL.Path, "stage/outputs")
 
-		assert.Equal(t, "/v1/terraform/data/stage/outputs", r.URL.Path)
-		assert.Equal(t, expectedBody, decoded)
-		// function doesn't care about the returned info just that there is no error
+		// kv1 & kv2 have different request formats to creating/updating secrets
+		if strings.Contains(r.URL.Path, "data") {
+			var decoded data
+			expectedBody := data{
+				Data: body,
+			}
+			// KV2
+			err := json.NewDecoder(r.Body).Decode(&decoded)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedBody, decoded)
+		} else {
+			var decoded payload
+			expectedBody := body
+			err := json.NewDecoder(r.Body).Decode(&decoded)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedBody, decoded)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"hello": "world"})
 	}))
@@ -147,6 +167,12 @@ func TestWriteVaultOutputs(t *testing.T) {
 	})
 
 	err := WriteOutputs(client, VaultSecret{
+		Path: "terraform/stage/outputs",
+	}, planOutput, KvV1)
+
+	assert.Nil(t, err)
+
+	err = WriteOutputs(client, VaultSecret{
 		Path: "terraform/stage/outputs",
 	}, planOutput, KvV2)
 
