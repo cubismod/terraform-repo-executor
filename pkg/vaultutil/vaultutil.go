@@ -3,9 +3,9 @@ package vaultutil
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -61,21 +61,12 @@ func WriteOutputs(client *vault.Client, secretInfo VaultSecret, data map[string]
 	secretData := make(VaultKvData)
 
 	for k, v := range data {
-		// Each value included in OutputMeta is of type json.RawMessage or in other words, a raw JSON string.
-		// When tfexec is decoding the stdout of `terraform output`, it does not remove those double quotes
-		// since a valid string in JSON includes quotes around. Therefore we try and remove those ourselves
-		// when saving a stringified version of the JSON value to Vault
-		if v.Value[0] == '"' {
-			value, err := strconv.Unquote(string(v.Value[:]))
-			if err != nil {
-				log.Printf("Unable to remove extra quotes around key: %s, saving raw output to Vault", k)
-				secretData[k] = string(v.Value[:])
-			} else {
-				secretData[k] = value
-			}
-		} else {
-			secretData[k] = string(v.Value[:])
+		var value interface{}
+		err := json.Unmarshal(v.Value, &value)
+		if err != nil {
+			return err
 		}
+		secretData[k] = value
 	}
 
 	err := WriteVaultSecret(client, secretInfo, secretData, kvVersion)

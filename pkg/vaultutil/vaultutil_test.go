@@ -108,8 +108,7 @@ func TestGetVaultTfSecretV1(t *testing.T) {
 
 func TestWriteVaultOutputs(t *testing.T) {
 	type payload struct {
-		VPCID               string `json:"vpc_id"`
-		UnquotedSensitiveID string `json:"unquoted_sensitive_id"`
+		VPCID string `json:"vpc_id"`
 	}
 
 	type data struct {
@@ -122,17 +121,11 @@ func TestWriteVaultOutputs(t *testing.T) {
 			Type:      json.RawMessage(`string`),
 			Value:     json.RawMessage(`"vpc-22fd8eb8"`),
 		},
-		"unquoted_sensitive_id": {
-			Sensitive: true,
-			Type:      json.RawMessage(`string`),
-			Value:     json.RawMessage(`massivesecret`),
-		},
 	}
 
 	vaultMock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body := payload{
-			VPCID:               "vpc-22fd8eb8",
-			UnquotedSensitiveID: "massivesecret",
+			VPCID: "vpc-22fd8eb8",
 		}
 
 		assert.Contains(t, r.URL.Path, "stage/outputs")
