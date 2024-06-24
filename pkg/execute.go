@@ -149,8 +149,8 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	if len(output) > 0 && repo.TfVariables.Outputs.Path != "" {
-		err = vaultutil.WriteOutputs(vaultClient, repo.TfVariables.Outputs, output)
+	if output != nil && repo.TfVariables.Outputs.Path != "" {
+		err = vaultutil.WriteOutputs(vaultClient, repo.TfVariables.Outputs, output, e.vaultTfKvVersion)
 		if err != nil {
 			return err
 		}

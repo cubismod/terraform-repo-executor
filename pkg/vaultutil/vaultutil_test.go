@@ -1,12 +1,15 @@
 package vaultutil
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-exec/tfexec"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/assert"
 )
@@ -101,4 +104,70 @@ func TestGetVaultTfSecretV1(t *testing.T) {
 	}
 
 	assert.Equal(t, expected, actual)
+}
+
+func TestWriteVaultOutputs(t *testing.T) {
+	type payload struct {
+		VPCID string `json:"vpc_id"`
+	}
+
+	type data struct {
+		Data payload `json:"data"`
+	}
+
+	planOutput := map[string]tfexec.OutputMeta{
+		"vpc_id": {
+			Sensitive: false,
+			Type:      json.RawMessage(`string`),
+			Value:     json.RawMessage(`"vpc-22fd8eb8"`),
+		},
+	}
+
+	vaultMock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body := payload{
+			VPCID: "vpc-22fd8eb8",
+		}
+
+		assert.Contains(t, r.URL.Path, "stage/outputs")
+
+		// kv1 & kv2 have different request formats to creating/updating secrets
+		if strings.Contains(r.URL.Path, "data") {
+			var decoded data
+			expectedBody := data{
+				Data: body,
+			}
+			// KV2
+			err := json.NewDecoder(r.Body).Decode(&decoded)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedBody, decoded)
+		} else {
+			var decoded payload
+			expectedBody := body
+			err := json.NewDecoder(r.Body).Decode(&decoded)
+
+			assert.Nil(t, err)
+			assert.Equal(t, expectedBody, decoded)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"hello": "world"})
+	}))
+
+	defer vaultMock.Close()
+	client, _ := vault.NewClient(&vault.Config{
+		Address: vaultMock.URL,
+	})
+
+	err := WriteOutputs(client, VaultSecret{
+		Path: "terraform/stage/outputs",
+	}, planOutput, KvV1)
+
+	assert.Nil(t, err)
+
+	err = WriteOutputs(client, VaultSecret{
+		Path: "terraform/stage/outputs",
+	}, planOutput, KvV2)
+
+	assert.Nil(t, err)
 }
