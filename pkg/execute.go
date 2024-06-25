@@ -56,14 +56,6 @@ func Run(cfgPath,
 	secretID,
 	kvVersion string) error {
 
-	// clear working directory upon exit
-	defer os.RemoveAll(workdir)
-
-	err := os.Mkdir(workdir, 0770)
-	if err != nil {
-		return err
-	}
-
 	cfg, err := processConfig(cfgPath)
 	if err != nil {
 		return err
@@ -85,11 +77,22 @@ func Run(cfgPath,
 
 	errCounter := 0
 	for _, repo := range cfg.Repos {
+		// there needs to be a clean working directory for each repository
+		err := os.Mkdir(workdir, 0770)
+		if err != nil {
+			return err
+		}
+
 		err = e.execute(repo, vaultClient, cfg.DryRun)
 		if err != nil {
 			log.Printf("Error executing terraform operations for: %s\n", repo.Name)
 			log.Println(err)
 			errCounter++
+		}
+
+		err = os.RemoveAll(workdir)
+		if err != nil {
+			return err
 		}
 	}
 
