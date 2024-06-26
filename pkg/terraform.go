@@ -213,7 +213,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 		return nil, err
 	}
 
-	var stdout, stderr bytes.Buffer
+	var stdout, stderr, blackhole bytes.Buffer
 	tf.SetStdout(&stdout)
 	tf.SetStderr(&stderr)
 
@@ -242,6 +242,9 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 
 			if repo.TfVariables.Outputs.Path != "" {
 				log.Printf("Capturing Output values to save to %s in Vault", repo.TfVariables.Outputs.Path)
+				// don't log the results of `terraform output -json` as that can leak sensitive credentials
+				tf.SetStdout(&blackhole)
+				tf.SetStderr(&blackhole)
 				output, err = tf.Output(
 					context.Background(),
 				)
