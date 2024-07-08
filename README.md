@@ -12,6 +12,11 @@ Terraform Repo executor takes input from a corresponding [Qontract Reconcile int
   * `VAULT_ADDR` - http address of Vault instance to retrieve/write secrets to
   * `VAULT_ROLE_ID` - used for [AppRole auth](https://developer.hashicorp.com/vault/docs/auth/approle)
   * `VAULT_SECRET_ID`- used for [AppRole auth](https://developer.hashicorp.com/vault/docs/auth/approle)
+  * `GITLAB_LOG_REPO` - URL of what repo to write `terraform show` to, do not include `https://`, `http://`, `ssh://`, include `.git`
+    * example: `gitlab.example.com/tanuki/awesome_project.git`
+  * `GITLAB_USERNAME` - username for bot account that pushes to GitLab
+  * `GITLAB_TOKEN` - token for bot account that pushes to GitLab
+  * `GIT_EMAIL` - email to associate commits with
 * **Optional**
   * `CONFIG_FILE` - input/config file location, defaults to `/config.yaml`
   * `WORKDIR` - working directory for tf operations, defaults to `/tf-repo`
