@@ -1,9 +1,9 @@
-FROM quay.io/app-sre/golang:1.22.1 as builder
+FROM quay.io/app-sre/golang:1.22.1 AS builder
 WORKDIR /build
 COPY . .
 RUN make lint build
 
-FROM registry.access.redhat.com/ubi8/ubi:8.8 as downloader
+FROM registry.access.redhat.com/ubi8/ubi:8.8 AS downloader
 WORKDIR /download
 ENV TENV_VERSION=1.2.0
 
