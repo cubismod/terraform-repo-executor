@@ -17,6 +17,10 @@ const (
 	VaultSecretID    = "VAULT_SECRET_ID"
 	VaultTfKvVersion = "VAULT_TF_KV_VERSION"
 	WorkDir          = "WORKDIR"
+	GitlabLogRepo    = "GITLAB_LOG_REPO"
+	GitlabUsername   = "GITLAB_USERNAME"
+	GitlabToken      = "GITLAB_TOKEN"
+	GitEmail         = "GIT_EMAIL"
 )
 
 func main() {
@@ -26,6 +30,10 @@ func main() {
 	roleID := getEnvOrError(VaultRoleID)
 	secretID := getEnvOrError(VaultSecretID)
 	kvVersion := getEnvOrDefault(VaultTfKvVersion, vaultutil.KvV2)
+	gitlabLogRepo := getEnvOrError(GitlabLogRepo)
+	gitlabUsername := getEnvOrError(GitlabUsername)
+	gitlabToken := getEnvOrError(GitlabToken)
+	gitEmail := getEnvOrError(GitEmail)
 
 	err := pkg.Run(cfgPath,
 		workdir,
@@ -33,6 +41,10 @@ func main() {
 		roleID,
 		secretID,
 		kvVersion,
+		gitlabLogRepo,
+		gitlabUsername,
+		gitlabToken,
+		gitEmail,
 	)
 	if err != nil {
 		log.Fatalln(err)

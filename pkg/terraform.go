@@ -78,7 +78,7 @@ func (e *Executor) generateBackendFile(creds TfCreds, repo Repo) error {
 		{{- "\n"}}key = "{{.Key}}"
 		{{- "\n"}}bucket = "{{.Bucket}}"`
 
-	err := WriteTemplate(creds, backendTemplate, BackendFile, e.workdir, repo)
+	err := WriteTemplate(creds, backendTemplate, fmt.Sprintf("%s/%s/%s/%s", e.workdir, repo.Name, repo.Path, BackendFile))
 
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (e *Executor) generateCredVarsFile(creds TfCreds, repo Repo) error {
 		VaultSecretID: e.vaultSecretID,
 	}
 
-	err := WriteTemplate(tfVars, body, AWSVarsFile, e.workdir, repo)
+	err := WriteTemplate(tfVars, body, fmt.Sprintf("%s/%s/%s/%s", e.workdir, repo.Name, repo.Path, AWSVarsFile))
 
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (e *Executor) generateCredVarsFile(creds TfCreds, repo Repo) error {
 func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) error {
 	body := `{{ range $k, $v := . }}{{ $k }} = "{{ $v }}"{{- "\n"}}{{ end }}`
 
-	err := WriteTemplate(data, body, InputVarsFile, e.workdir, repo)
+	err := WriteTemplate(data, body, fmt.Sprintf("%s/%s/%s/%s", e.workdir, repo.Name, repo.Path, InputVarsFile))
 
 	if err != nil {
 		return err
@@ -139,17 +139,15 @@ func (e *Executor) generateInputVarsFile(data vaultutil.VaultKvData, repo Repo) 
 	return nil
 }
 
-// WriteTemplate is responsible for templating a file and writing it to disk
+// WriteTemplate is responsible for templating a file and writing it to the location specified at out
 // note that this is not a struct method as generics are incompatible with methods
-func WriteTemplate[T TfVars | vaultutil.VaultKvData | TfCreds](inputs T, body string, filename string, workdir string, repo Repo) error {
-	tmpl, err := template.New(filename).Parse(body)
+func WriteTemplate[T TfVars | vaultutil.VaultKvData | TfCreds | StateVars](inputs T, body string, out string) error {
+	tmpl, err := template.New(out).Parse(body)
 	if err != nil {
 		return err
 	}
 
-	templatePath := fmt.Sprintf("%s/%s/%s/%s", workdir, repo.Name, repo.Path, filename)
-
-	f, err := os.Create(templatePath)
+	f, err := os.Create(out)
 	if err != nil {
 		return err
 	}
@@ -189,6 +187,16 @@ func (e *Executor) fipsComplianceCheck(repo Repo, planFile string, tf *tfexec.Te
 	}
 
 	return nil
+}
+
+// performs a terraform show without the `-json` flag to workaround the fact that the tfexec package
+// only supports outputting the state as JSON which exposes sensitive values
+func (e *Executor) showRaw(dir string, tfBinaryLocation string) (string, error) {
+	out, err := executeCommand(dir, tfBinaryLocation, []string{"show"})
+	if err != nil {
+		return "", err
+	}
+	return out, err
 }
 
 // performs a terraform plan and then apply if not running in dry run mode
@@ -254,6 +262,17 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 	}
 	if err != nil {
 		return nil, errors.New(stderr.String())
+	}
+
+	if !dryRun {
+		rawState, err := e.showRaw(dir, tfBinaryLocation)
+		if err != nil {
+			return nil, err
+		}
+		err = e.commitAndPushState(repo, rawState)
+		if err != nil {
+			log.Printf("Unable to commit state file to Git, error: %s", err)
+		}
 	}
 
 	log.Printf("Output for %s\n", repo.Name)

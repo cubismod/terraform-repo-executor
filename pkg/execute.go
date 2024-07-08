@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 
+	_ "embed"
+
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 	vault "github.com/hashicorp/vault/api"
 )
@@ -45,7 +47,22 @@ type Executor struct {
 	vaultRoleID      string
 	vaultSecretID    string
 	vaultTfKvVersion string
+	gitlabLogRepo    string
+	gitlabUsername   string
+	gitlabToken      string
+	gitEmail         string
 }
+
+// StateVars are used to render the raw statefile in markdown
+type StateVars struct {
+	RepoName string
+	RepoURL  string
+	RepoSHA  string
+	State    string
+}
+
+//go:embed templates/show.tmpl
+var tmplData string
 
 // Run is responsible for the full lifecycle of creating/updating/deleting a Terraform repo.
 // Including loading config, secrets from vault, creation and cleanup of temp directories and the actual Terraform operations
@@ -54,7 +71,11 @@ func Run(cfgPath,
 	vaultAddr,
 	roleID,
 	secretID,
-	kvVersion string) error {
+	kvVersion,
+	gitlabLogRepo,
+	gitlabUsername,
+	gitlabToken,
+	gitEmail string) error {
 
 	cfg, err := processConfig(cfgPath)
 	if err != nil {
@@ -73,6 +94,10 @@ func Run(cfgPath,
 		vaultRoleID:      roleID,
 		vaultSecretID:    secretID,
 		vaultTfKvVersion: kvVersion,
+		gitlabLogRepo:    gitlabLogRepo,
+		gitlabUsername:   gitlabUsername,
+		gitlabToken:      gitlabToken,
+		gitEmail:         gitEmail,
 	}
 
 	errCounter := 0
@@ -160,4 +185,52 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 	}
 
 	return nil
+}
+
+// clones the output repo, writes the raw state to a file, commits and pushes that to GitLab
+func (e *Executor) commitAndPushState(repo Repo, state string) error {
+	tmpdir, err := os.MkdirTemp("", "tf-repo-state")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpdir)
+
+	// clone with token https://docs.gitlab.com/ee/topics/git/clone.html#clone-using-a-token
+	args := []string{"-c", fmt.Sprintf(
+		"git clone https://%s:%s@%s .",
+		e.gitlabUsername,
+		e.gitlabToken,
+		e.gitlabLogRepo,
+	)}
+
+	_, err = executeCommand(tmpdir, "/bin/sh", args)
+	if err != nil {
+		return err
+	}
+
+	// prepare to template a markdown file
+	stateVars := &StateVars{
+		RepoName: repo.Name,
+		RepoURL:  repo.URL,
+		RepoSHA:  repo.Ref,
+		State:    state,
+	}
+
+	err = WriteTemplate(*stateVars, tmplData, fmt.Sprintf("%s/%s.md", tmpdir, repo.Name))
+
+	if err != nil {
+		return err
+	}
+
+	// commit and push the results
+	args = []string{"-c", fmt.Sprintf(
+		"git config user.email %s && git config user.name %s && git add %s.md && git commit -m '%s update' && git push origin",
+		e.gitEmail,
+		e.gitlabUsername,
+		repo.Name,
+		repo.Name,
+	)}
+
+	_, err = executeCommand(tmpdir, "/bin/sh", args)
+	return err
 }
