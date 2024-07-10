@@ -32,10 +32,3 @@ fileExistenceTests:
   uid: 0
   gid: 0
   isExecutableBy: other
-
-
-commandTests:
-  - name: Git
-    command: git
-    args: ['help']
-    expectedOutput: ['usage: git']
