@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	_ "embed"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	vault "github.com/hashicorp/vault/api"
 )
 
@@ -103,7 +107,7 @@ func Run(cfgPath,
 	errCounter := 0
 	for _, repo := range cfg.Repos {
 		// there needs to be a clean working directory for each repository
-		err := os.Mkdir(workdir, 0770)
+		err := os.Mkdir(workdir, FolderPerm)
 		if err != nil {
 			return err
 		}
@@ -189,23 +193,24 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 
 // clones the output repo, writes the raw state to a file, commits and pushes that to GitLab
 func (e *Executor) commitAndPushState(repo Repo, state string) error {
+	gitAuth := &http.BasicAuth{
+		Username: e.gitlabUsername,
+		Password: e.gitlabToken,
+	}
+
 	tmpdir, err := os.MkdirTemp("", "tf-repo-state")
 	if err != nil {
 		return err
 	}
 	defer os.RemoveAll(tmpdir)
 
-	// clone with token https://docs.gitlab.com/ee/topics/git/clone.html#clone-using-a-token
-	args := []string{"-c", fmt.Sprintf(
-		"git clone https://%s:%s@%s .",
-		e.gitlabUsername,
-		e.gitlabToken,
-		e.gitlabLogRepo,
-	)}
-
-	_, err = executeCommand(tmpdir, "/bin/sh", args)
+	gitRepo, err := git.PlainClone(tmpdir, false, &git.CloneOptions{
+		URL:      e.gitlabLogRepo,
+		Auth:     gitAuth,
+		CABundle: GetCABundle(),
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("could not clone repo: '%s'", err)
 	}
 
 	// prepare to template a markdown file
@@ -217,20 +222,46 @@ func (e *Executor) commitAndPushState(repo Repo, state string) error {
 	}
 
 	err = WriteTemplate(*stateVars, tmplData, fmt.Sprintf("%s/%s.md", tmpdir, repo.Name))
-
 	if err != nil {
-		return err
+		return fmt.Errorf("could not template markdown: '%s'", err)
 	}
 
-	// commit and push the results
-	args = []string{"-c", fmt.Sprintf(
-		"git config user.email %s && git config user.name %s && git add %s.md && git commit -m '%s update' && git push origin",
-		e.gitEmail,
-		e.gitlabUsername,
-		repo.Name,
-		repo.Name,
-	)}
+	wt, err := gitRepo.Worktree()
+	if err != nil {
+		return fmt.Errorf("could not retrieve git worktree: '%s'", err)
+	}
 
-	_, err = executeCommand(tmpdir, "/bin/sh", args)
-	return err
+	st, err := wt.Status()
+	if err != nil {
+		return fmt.Errorf("could not retrieve worktree status: '%s'", err)
+	}
+
+	_, err = wt.Add(fmt.Sprintf("%s.md", repo.Name))
+	if err != nil {
+		return fmt.Errorf("could not perform git add: '%s'", err)
+	}
+
+	if !st.IsClean() {
+		// no need to commit changes if nothing changed
+		_, err = wt.Commit(fmt.Sprintf("%s: %s", repo.Name, time.Now().Format(time.RFC3339)), &git.CommitOptions{
+			Author: &object.Signature{
+				Name:  e.gitlabUsername,
+				Email: e.gitEmail,
+				When:  time.Now(),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("could not perform git commit: '%s'", err)
+		}
+
+		err = gitRepo.Push(&git.PushOptions{
+			RemoteName: "origin",
+			CABundle:   GetCABundle(),
+			Auth:       gitAuth,
+		})
+		if err != nil {
+			return fmt.Errorf("could not push git commit to remote: '%s'", err)
+		}
+	}
+	return nil
 }

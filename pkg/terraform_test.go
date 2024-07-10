@@ -112,7 +112,7 @@ func TestWriteTemplate(t *testing.T) {
 	repoDir := fmt.Sprintf("%s/%s/%s", tmpDir,
 		repoWithoutExplicitBucketSettings.Name,
 		repoWithoutExplicitBucketSettings.Path)
-	err = os.MkdirAll(repoDir, 0770)
+	err = os.MkdirAll(repoDir, FolderPerm)
 
 	assert.Nil(t, err)
 
