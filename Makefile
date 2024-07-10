@@ -36,9 +36,9 @@ build: vet
 .PHONY: image
 image:
 ifeq ($(CONTAINER_ENGINE), podman)
-	@DOCKER_BUILDKIT=1 $(CONTAINER_ENGINE) build --no-cache -t $(REPO):latest . --progress=plain
+	@DOCKER_BUILDKIT=1 $(CONTAINER_ENGINE) build -t $(REPO):latest . --progress=plain
 else
-	@DOCKER_BUILDKIT=1 $(CONTAINER_ENGINE) --config=$(DOCKER_CONF) build --no-cache -t $(REPO):latest . --progress=plain
+	@DOCKER_BUILDKIT=1 $(CONTAINER_ENGINE) --config=$(DOCKER_CONF) build -t $(REPO):latest . --progress=plain
 endif
 	@$(CONTAINER_ENGINE) tag $(REPO):latest $(REPO):$(TAG)
 
