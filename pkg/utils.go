@@ -7,8 +7,13 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"gopkg.in/yaml.v2"
 )
+
+// FolderPerm is 0770 in chmod
+const FolderPerm = 0770
 
 func processConfig(cfgPath string) (*Input, error) {
 	raw, err := os.ReadFile(cfgPath)
@@ -40,16 +45,45 @@ func executeCommand(dir, command string, args []string) (string, error) {
 	return stdout.String(), nil
 }
 
+// GetCABundle retrieves custom certificate authorities needed to process a Git repo and returns a byte slice or
+// an empty slice if no CAs are provided
+func GetCABundle() []byte {
+	bundlePath := os.Getenv("GIT_SSL_CAINFO")
+	if bundlePath != "" {
+		bundle, err := os.ReadFile(bundlePath)
+		if err != nil {
+			return nil
+		}
+
+		return bundle
+	}
+	return nil
+}
+
 func (r Repo) cloneRepo(workdir string) error {
-	args := []string{"-c", fmt.Sprintf(
-		// clone repo with specified name and checkout specified ref
-		"git clone %s %s && cd %s && git checkout %s",
-		r.URL,
-		r.Name,
-		r.Name,
-		r.Ref,
-	)}
-	_, err := executeCommand(workdir, "/bin/sh", args)
+	// go-git doesn't create a new directory in the cloned dir so we have to create one ourselves
+	clonedDir := fmt.Sprintf("%s/%s", workdir, r.Name)
+	err := os.Mkdir(clonedDir, FolderPerm)
+	if err != nil {
+		return err
+	}
+
+	repo, err := git.PlainClone(clonedDir, false, &git.CloneOptions{
+		URL:      r.URL,
+		CABundle: GetCABundle(),
+	})
+	if err != nil {
+		return err
+	}
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		return err
+	}
+
+	err = wt.Checkout(&git.CheckoutOptions{
+		Hash: plumbing.NewHash(r.Ref),
+	})
 	if err != nil {
 		return err
 	}

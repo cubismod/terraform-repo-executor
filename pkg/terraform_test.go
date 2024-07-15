@@ -112,7 +112,7 @@ func TestWriteTemplate(t *testing.T) {
 	repoDir := fmt.Sprintf("%s/%s/%s", tmpDir,
 		repoWithoutExplicitBucketSettings.Name,
 		repoWithoutExplicitBucketSettings.Path)
-	err = os.MkdirAll(repoDir, 0770)
+	err = os.MkdirAll(repoDir, FolderPerm)
 
 	assert.Nil(t, err)
 
@@ -132,7 +132,7 @@ func TestWriteTemplate(t *testing.T) {
 			{{- "\n"}}key = "{{.Key}}"
 			{{- "\n"}}bucket = "{{.Bucket}}"`
 
-		err := WriteTemplate(backendCreds, body, BackendFile, tmpDir, repoWithoutExplicitBucketSettings)
+		err := WriteTemplate(backendCreds, body, fmt.Sprintf("%s/%s/%s/%s", tmpDir, repoWithoutExplicitBucketSettings.Name, repoWithoutExplicitBucketSettings.Path, BackendFile))
 
 		assert.Nil(t, err)
 
@@ -152,7 +152,7 @@ func TestWriteTemplate(t *testing.T) {
 		}
 		body := `{{ range $k, $v := . }}{{ $k }} = "{{ $v }}"{{- "\n"}}{{ end }}`
 
-		err := WriteTemplate(inputSecret, body, InputVarsFile, tmpDir, repoWithoutExplicitBucketSettings)
+		err := WriteTemplate(inputSecret, body, fmt.Sprintf("%s/%s/%s/%s", tmpDir, repoWithoutExplicitBucketSettings.Name, repoWithoutExplicitBucketSettings.Path, InputVarsFile))
 
 		assert.Nil(t, err)
 

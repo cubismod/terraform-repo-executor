@@ -5,8 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
+
+	_ "embed"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	vault "github.com/hashicorp/vault/api"
 )
 
@@ -45,7 +51,22 @@ type Executor struct {
 	vaultRoleID      string
 	vaultSecretID    string
 	vaultTfKvVersion string
+	gitlabLogRepo    string
+	gitlabUsername   string
+	gitlabToken      string
+	gitEmail         string
 }
+
+// StateVars are used to render the raw statefile in markdown
+type StateVars struct {
+	RepoName string
+	RepoURL  string
+	RepoSHA  string
+	State    string
+}
+
+//go:embed templates/show.tmpl
+var tmplData string
 
 // Run is responsible for the full lifecycle of creating/updating/deleting a Terraform repo.
 // Including loading config, secrets from vault, creation and cleanup of temp directories and the actual Terraform operations
@@ -54,7 +75,11 @@ func Run(cfgPath,
 	vaultAddr,
 	roleID,
 	secretID,
-	kvVersion string) error {
+	kvVersion,
+	gitlabLogRepo,
+	gitlabUsername,
+	gitlabToken,
+	gitEmail string) error {
 
 	cfg, err := processConfig(cfgPath)
 	if err != nil {
@@ -73,12 +98,16 @@ func Run(cfgPath,
 		vaultRoleID:      roleID,
 		vaultSecretID:    secretID,
 		vaultTfKvVersion: kvVersion,
+		gitlabLogRepo:    gitlabLogRepo,
+		gitlabUsername:   gitlabUsername,
+		gitlabToken:      gitlabToken,
+		gitEmail:         gitEmail,
 	}
 
 	errCounter := 0
 	for _, repo := range cfg.Repos {
 		// there needs to be a clean working directory for each repository
-		err := os.Mkdir(workdir, 0770)
+		err := os.Mkdir(workdir, FolderPerm)
 		if err != nil {
 			return err
 		}
@@ -159,5 +188,80 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		}
 	}
 
+	return nil
+}
+
+// clones the output repo, writes the raw state to a file, commits and pushes that to GitLab
+func (e *Executor) commitAndPushState(repo Repo, state string) error {
+	gitAuth := &http.BasicAuth{
+		Username: e.gitlabUsername,
+		Password: e.gitlabToken,
+	}
+
+	tmpdir, err := os.MkdirTemp("", "tf-repo-state")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(tmpdir)
+
+	gitRepo, err := git.PlainClone(tmpdir, false, &git.CloneOptions{
+		URL:      e.gitlabLogRepo,
+		Auth:     gitAuth,
+		CABundle: GetCABundle(),
+	})
+	if err != nil {
+		return fmt.Errorf("could not clone repo: '%s'", err)
+	}
+
+	// prepare to template a markdown file
+	stateVars := &StateVars{
+		RepoName: repo.Name,
+		RepoURL:  repo.URL,
+		RepoSHA:  repo.Ref,
+		State:    state,
+	}
+
+	err = WriteTemplate(*stateVars, tmplData, fmt.Sprintf("%s/%s.md", tmpdir, repo.Name))
+	if err != nil {
+		return fmt.Errorf("could not template markdown: '%s'", err)
+	}
+
+	wt, err := gitRepo.Worktree()
+	if err != nil {
+		return fmt.Errorf("could not retrieve git worktree: '%s'", err)
+	}
+
+	st, err := wt.Status()
+	if err != nil {
+		return fmt.Errorf("could not retrieve worktree status: '%s'", err)
+	}
+
+	_, err = wt.Add(fmt.Sprintf("%s.md", repo.Name))
+	if err != nil {
+		return fmt.Errorf("could not perform git add: '%s'", err)
+	}
+
+	if !st.IsClean() {
+		// no need to commit changes if nothing changed
+		_, err = wt.Commit(fmt.Sprintf("%s: %s", repo.Name, time.Now().Format(time.RFC3339)), &git.CommitOptions{
+			Author: &object.Signature{
+				Name:  e.gitlabUsername,
+				Email: e.gitEmail,
+				When:  time.Now(),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("could not perform git commit: '%s'", err)
+		}
+
+		err = gitRepo.Push(&git.PushOptions{
+			RemoteName: "origin",
+			CABundle:   GetCABundle(),
+			Auth:       gitAuth,
+		})
+		if err != nil {
+			return fmt.Errorf("could not push git commit to remote: '%s'", err)
+		}
+	}
 	return nil
 }

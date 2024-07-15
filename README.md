@@ -12,10 +12,16 @@ Terraform Repo executor takes input from a corresponding [Qontract Reconcile int
   * `VAULT_ADDR` - http address of Vault instance to retrieve/write secrets to
   * `VAULT_ROLE_ID` - used for [AppRole auth](https://developer.hashicorp.com/vault/docs/auth/approle)
   * `VAULT_SECRET_ID`- used for [AppRole auth](https://developer.hashicorp.com/vault/docs/auth/approle)
+  * `GITLAB_LOG_REPO` - URL of what repo to write `terraform show` to with the HTTPS protocol
+    * example: `gitlab.example.com/tanuki/awesome_project.git`
+  * `GITLAB_USERNAME` - username for bot account that pushes to GitLab
+  * `GITLAB_TOKEN` - token for bot account that pushes to GitLab
+  * `GIT_EMAIL` - email to associate commits with
 * **Optional**
   * `CONFIG_FILE` - input/config file location, defaults to `/config.yaml`
   * `WORKDIR` - working directory for tf operations, defaults to `/tf-repo`
   * `VAULT_TF_KV_VERSION` - defaults to `KV_V2`. Specifies which version of the [Vault `kv` secrets engine to use for reading/writing secrets](https://developer.hashicorp.com/vault/docs/secrets/kv)
+  * `GIT_SSL_CAINFO` - allows you to supply [custom certificate authorities when dealing with self-signed gitlab instances](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslCAInfo), in this case this is the path to the certs
 
 ## Config file
 
