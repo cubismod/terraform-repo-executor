@@ -46,15 +46,15 @@ type TfVariables struct {
 
 // Executor includes required secrets and variables to perform a tf repo executor run
 type Executor struct {
-	workdir          string
-	vaultAddr        string
-	vaultRoleID      string
-	vaultSecretID    string
-	vaultTfKvVersion string
-	gitlabLogRepo    string
-	gitlabUsername   string
-	gitlabToken      string
-	gitEmail         string
+	workdir        string
+	vaultAddr      string
+	vaultRoleID    string
+	vaultSecretID  string
+	gitlabLogRepo  string
+	gitlabUsername string
+	gitlabToken    string
+	gitEmail       string
+	mountVersions  map[string]string
 }
 
 // StateVars are used to render the raw statefile in markdown
@@ -75,7 +75,6 @@ func Run(cfgPath,
 	vaultAddr,
 	roleID,
 	secretID,
-	kvVersion,
 	gitlabLogRepo,
 	gitlabUsername,
 	gitlabToken,
@@ -91,17 +90,22 @@ func Run(cfgPath,
 		return err
 	}
 
+	mountVersions, err := vaultutil.GetMountVersions(vaultClient)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve information about mounted secret engines, please ensure that tf-repo AppRole has access to /sys/mounts. Further info: %s", err)
+	}
+
 	// vault creds are stored for later usage when generating tfvars for vault provider
 	e := &Executor{
-		workdir:          workdir,
-		vaultAddr:        vaultAddr,
-		vaultRoleID:      roleID,
-		vaultSecretID:    secretID,
-		vaultTfKvVersion: kvVersion,
-		gitlabLogRepo:    gitlabLogRepo,
-		gitlabUsername:   gitlabUsername,
-		gitlabToken:      gitlabToken,
-		gitEmail:         gitEmail,
+		workdir:        workdir,
+		vaultAddr:      vaultAddr,
+		vaultRoleID:    roleID,
+		vaultSecretID:  secretID,
+		gitlabLogRepo:  gitlabLogRepo,
+		gitlabUsername: gitlabUsername,
+		gitlabToken:    gitlabToken,
+		gitEmail:       gitEmail,
+		mountVersions:  mountVersions,
 	}
 
 	errCounter := 0
@@ -138,7 +142,7 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		return err
 	}
 
-	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.AWSCreds, e.vaultTfKvVersion)
+	secret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.AWSCreds, e.mountVersions)
 	if err != nil {
 		return err
 	}
@@ -165,7 +169,7 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 
 	if repo.TfVariables.Inputs.Path != "" {
 		// extract kv pairs from vault for inputs and write them to a file for terraform usage
-		inputSecret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.TfVariables.Inputs, e.vaultTfKvVersion)
+		inputSecret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.TfVariables.Inputs, e.mountVersions)
 		if err != nil {
 			return err
 		}
@@ -182,7 +186,7 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 	}
 
 	if output != nil && repo.TfVariables.Outputs.Path != "" {
-		err = vaultutil.WriteOutputs(vaultClient, repo.TfVariables.Outputs, output, e.vaultTfKvVersion)
+		err = vaultutil.WriteOutputs(vaultClient, repo.TfVariables.Outputs, output, e.mountVersions)
 		if err != nil {
 			return err
 		}

@@ -6,21 +6,19 @@ import (
 	"os"
 
 	"github.com/app-sre/terraform-repo-executor/pkg"
-	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 )
 
 // environment variables
 const (
-	ConfigFile       = "CONFIG_FILE"
-	VaultAddr        = "VAULT_ADDR"
-	VaultRoleID      = "VAULT_ROLE_ID"
-	VaultSecretID    = "VAULT_SECRET_ID"
-	VaultTfKvVersion = "VAULT_TF_KV_VERSION"
-	WorkDir          = "WORKDIR"
-	GitlabLogRepo    = "GITLAB_LOG_REPO"
-	GitlabUsername   = "GITLAB_USERNAME"
-	GitlabToken      = "GITLAB_TOKEN"
-	GitEmail         = "GIT_EMAIL"
+	ConfigFile     = "CONFIG_FILE"
+	VaultAddr      = "VAULT_ADDR"
+	VaultRoleID    = "VAULT_ROLE_ID"
+	VaultSecretID  = "VAULT_SECRET_ID"
+	WorkDir        = "WORKDIR"
+	GitlabLogRepo  = "GITLAB_LOG_REPO"
+	GitlabUsername = "GITLAB_USERNAME"
+	GitlabToken    = "GITLAB_TOKEN"
+	GitEmail       = "GIT_EMAIL"
 )
 
 func main() {
@@ -29,7 +27,6 @@ func main() {
 	vaultAddr := getEnvOrError(VaultAddr)
 	roleID := getEnvOrError(VaultRoleID)
 	secretID := getEnvOrError(VaultSecretID)
-	kvVersion := getEnvOrDefault(VaultTfKvVersion, vaultutil.KvV2)
 	gitlabLogRepo := getEnvOrError(GitlabLogRepo)
 	gitlabUsername := getEnvOrError(GitlabUsername)
 	gitlabToken := getEnvOrError(GitlabToken)
@@ -40,7 +37,6 @@ func main() {
 		vaultAddr,
 		roleID,
 		secretID,
-		kvVersion,
 		gitlabLogRepo,
 		gitlabUsername,
 		gitlabToken,

@@ -23,9 +23,28 @@ type VaultKvData map[string]interface{}
 
 // which KV engine a particular vault mount is using
 const (
-	KvV1 = "KV_V1"
-	KvV2 = "KV_V2"
+	KvV1 = "1"
+	KvV2 = "2"
 )
+
+// GetMountVersions retrieves the KV engine version of each mount in Vault as a map
+// and ignores any non KV mounts
+func GetMountVersions(client *vault.Client) (map[string]string, error) {
+	mounts, err := client.Sys().ListMounts()
+	if err != nil {
+		return nil, err
+	}
+	r := make(map[string]string)
+
+	for k, v := range mounts {
+		version := v.Options["version"]
+		if v.Type == "kv" && version != "" {
+			r[strings.TrimSuffix(k, "/")] = version
+		}
+	}
+
+	return r, nil
+}
 
 // InitVaultClient sets up a Vault client that logs in using AppRole credentials
 func InitVaultClient(addr, roleID, secretID string) (*vault.Client, error) {
@@ -56,7 +75,7 @@ func InitVaultClient(addr, roleID, secretID string) (*vault.Client, error) {
 }
 
 // WriteOutputs takes any output values from a Terraform apply and then writes them into Vault
-func WriteOutputs(client *vault.Client, secretInfo VaultSecret, data map[string]tfexec.OutputMeta, kvVersion string) error {
+func WriteOutputs(client *vault.Client, secretInfo VaultSecret, data map[string]tfexec.OutputMeta, mountVersions map[string]string) error {
 	log.Printf("Writing Output values from Terraform Apply to %s in Vault", secretInfo.Path)
 	secretData := make(VaultKvData)
 
@@ -69,7 +88,7 @@ func WriteOutputs(client *vault.Client, secretInfo VaultSecret, data map[string]
 		secretData[k] = value
 	}
 
-	err := WriteVaultSecret(client, secretInfo, secretData, kvVersion)
+	err := WriteVaultSecret(client, secretInfo, secretData, mountVersions)
 	if err != nil {
 		return err
 	}
@@ -99,12 +118,12 @@ func splitVaultPath(path string) (string, string, error) {
 }
 
 // WriteVaultSecret writes a map of KV pairs to Vault at the specified path
-func WriteVaultSecret(client *vault.Client, secretInfo VaultSecret, data map[string]interface{}, kvVersion string) error {
+func WriteVaultSecret(client *vault.Client, secretInfo VaultSecret, data map[string]interface{}, mountVersions map[string]string) error {
 	mount, path, err := splitVaultPath(secretInfo.Path)
 	if err != nil {
 		return err
 	}
-	if kvVersion == KvV2 {
+	if mountVersions[mount] == KvV2 {
 		_, err = client.KVv2(mount).Put(context.Background(), path, data)
 		return err
 	}
@@ -112,10 +131,15 @@ func WriteVaultSecret(client *vault.Client, secretInfo VaultSecret, data map[str
 }
 
 // GetVaultTfSecret retrieves the contents of a secret in Vault
-func GetVaultTfSecret(client *vault.Client, secretInfo VaultSecret, kvVersion string) (VaultKvData, error) {
+func GetVaultTfSecret(client *vault.Client, secretInfo VaultSecret, mountVersions map[string]string) (VaultKvData, error) {
 	var secret VaultKvData
 
-	switch kvVersion {
+	mount, _, err := splitVaultPath(secretInfo.Path)
+	if err != nil {
+		return nil, err
+	}
+
+	switch mountVersions[mount] {
 	case KvV1:
 		rawSecret, err := client.Logical().Read(secretInfo.Path)
 		if err != nil {
@@ -158,7 +182,7 @@ func GetVaultTfSecret(client *vault.Client, secretInfo VaultSecret, kvVersion st
 			return nil, fmt.Errorf("failed to process data for secret at path: %s", secretInfo.Path)
 		}
 	default:
-		return nil, fmt.Errorf("invalid vault kv engine version specified: %s", kvVersion)
+		return nil, fmt.Errorf("invalid vault kv engine version specified at mount: %s", mount)
 	}
 
 	return secret, nil
