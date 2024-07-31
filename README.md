@@ -20,8 +20,34 @@ Terraform Repo executor takes input from a corresponding [Qontract Reconcile int
 * **Optional**
   * `CONFIG_FILE` - input/config file location, defaults to `/config.yaml`
   * `WORKDIR` - working directory for tf operations, defaults to `/tf-repo`
-  * `VAULT_TF_KV_VERSION` - defaults to `KV_V2`. Specifies which version of the [Vault `kv` secrets engine to use for reading/writing secrets](https://developer.hashicorp.com/vault/docs/secrets/kv)
   * `GIT_SSL_CAINFO` - allows you to supply [custom certificate authorities when dealing with self-signed gitlab instances](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslCAInfo), in this case this is the path to the certs
+
+## AppRole Permissions
+
+Configuring the AppRole for Terraform Repo should be done within App Interface. Here is an example of the kind of permissions that Terraform Repo will need (using KVv2 format):
+
+```hcl
+# Replace this path with wherever your AWS account credentials are stored, Terraform Repo needs this access to
+# read/write to AWS
+path "aws-accounts/data/terraform/*" {
+  capabilities = ["read"]
+}
+
+# tenants will place their secrets into folders labeled under their team names in the
+# input and output directory
+path "terraform-repo/data/input/*" {
+  capabilities = ["read"]
+}
+
+path "terraform-repo/data/output/*" {
+  capabilities = ["create", "update", "read", "delete"]
+}
+
+# required for getting information about if a mount is KVv1 or V2 for read/write operations
+path "sys/mounts" {
+  capabilities = ["read", "list"]
+}
+```
 
 ## Config file
 

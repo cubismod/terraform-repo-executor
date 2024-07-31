@@ -33,6 +33,10 @@ func TestInitVaultClient(t *testing.T) {
 }
 
 func TestGetVaultTfSecretV2(t *testing.T) {
+	mountData := map[string]string{
+		"terraform": KvV2,
+	}
+
 	mockedData := `{
 		"data": {
 			"data": {
@@ -58,7 +62,7 @@ func TestGetVaultTfSecretV2(t *testing.T) {
 	actual, err := GetVaultTfSecret(client, VaultSecret{
 		Path:    "terraform/stage",
 		Version: 3,
-	}, KvV2)
+	}, mountData)
 	assert.Nil(t, err)
 
 	expected := VaultKvData{
@@ -72,6 +76,10 @@ func TestGetVaultTfSecretV2(t *testing.T) {
 }
 
 func TestGetVaultTfSecretV1(t *testing.T) {
+	mountData := map[string]string{
+		"terraform": KvV1,
+	}
+
 	mockedData := `{
 		"data": {
 		  	"aws_access_key_id": "foo",
@@ -93,7 +101,7 @@ func TestGetVaultTfSecretV1(t *testing.T) {
 	actual, err := GetVaultTfSecret(client, VaultSecret{
 		Path:    "terraform/stage",
 		Version: 1,
-	}, KvV1)
+	}, mountData)
 	assert.Nil(t, err)
 
 	expected := VaultKvData{
@@ -159,15 +167,23 @@ func TestWriteVaultOutputs(t *testing.T) {
 		Address: vaultMock.URL,
 	})
 
+	mountData := map[string]string{
+		"terraform": KvV1,
+	}
+
 	err := WriteOutputs(client, VaultSecret{
 		Path: "terraform/stage/outputs",
-	}, planOutput, KvV1)
+	}, planOutput, mountData)
 
 	assert.Nil(t, err)
 
+	mountData = map[string]string{
+		"terraform": KvV2,
+	}
+
 	err = WriteOutputs(client, VaultSecret{
 		Path: "terraform/stage/outputs",
-	}, planOutput, KvV2)
+	}, planOutput, mountData)
 
 	assert.Nil(t, err)
 }
