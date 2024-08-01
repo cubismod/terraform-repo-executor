@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	vault "github.com/hashicorp/vault/api"
+	"github.com/lithammer/dedent"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,7 +38,8 @@ func TestGetVaultTfSecretV2(t *testing.T) {
 		"terraform": KvV2,
 	}
 
-	mockedData := `{
+	mockedData := `
+	{
 		"data": {
 			"data": {
 			  	"aws_access_key_id": "foo",
@@ -47,11 +49,11 @@ func TestGetVaultTfSecretV2(t *testing.T) {
 			},
 			"metadata": {}
 		}
-}`
+	}`
 	vaultMock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "v1/terraform/data/stage")
 		assert.Equal(t, "3", r.URL.Query().Get("version"))
-		fmt.Fprint(w, mockedData)
+		fmt.Fprint(w, dedent.Dedent(mockedData))
 	}))
 	defer vaultMock.Close()
 
@@ -80,17 +82,18 @@ func TestGetVaultTfSecretV1(t *testing.T) {
 		"terraform": KvV1,
 	}
 
-	mockedData := `{
+	mockedData := `
+	{
 		"data": {
 		  	"aws_access_key_id": "foo",
 			"aws_secret_access_key": "bar",
 			"region": "weast",
 			"bucket": "head"
 		}
-}`
+	}`
 	vaultMock := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Contains(t, r.URL.Path, "v1/terraform/stage")
-		fmt.Fprint(w, mockedData)
+		fmt.Fprint(w, dedent.Dedent(mockedData))
 	}))
 	defer vaultMock.Close()
 
