@@ -92,7 +92,8 @@ func (r Repo) cloneRepo(workdir string) error {
 }
 
 // MaskSensitiveStateValues redacts any Vault secrets in a Terraform human-readable state file
+// more specifically, any Terraform datasource beginning with `vault_` will be redacted from the output
 func MaskSensitiveStateValues(src string) string {
-	re := regexp.MustCompile(`(?sU)(data "vault_generic_secret".+\n})`)
+	re := regexp.MustCompile(`(?sU)(data "vault_.+\n})`)
 	return re.ReplaceAllString(src, "[REDACTED VAULT SECRET]")
 }
