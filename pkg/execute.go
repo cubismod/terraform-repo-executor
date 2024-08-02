@@ -222,7 +222,7 @@ func (e *Executor) commitAndPushState(repo Repo, state string) error {
 		RepoName: repo.Name,
 		RepoURL:  repo.URL,
 		RepoSHA:  repo.Ref,
-		State:    state,
+		State:    MaskSensitiveStateValues(state),
 	}
 
 	err = WriteTemplate(*stateVars, tmplData, fmt.Sprintf("%s/%s.md", tmpdir, repo.Name))

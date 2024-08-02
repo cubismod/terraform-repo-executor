@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
+	"github.com/lithammer/dedent"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,30 +16,30 @@ func TestProcessConfig(t *testing.T) {
 
 	t.Run("valid yaml returns no error and actual equals expected", func(t *testing.T) {
 		raw := `
-dry_run: true
-repos: 
-- repository: https://gitlab.myinstance.com/some-gl-group/project_a
-  name: foo-foo
-  ref: d82b3cb292d91ec2eb26fc282d751555088819f3
-  project_path: prod/networking
-  delete: false
-  aws_creds:
-    path: terraform/creds/prod-account
-    version: 4
-  bucket: app-sre
-  region: us-east-1
-  bucket_path: tf-repo
-  tf_version: 1.5.7
-  require_fips: true
-  variables:
-    inputs:
-      path: terraform/foo-foo/inputs
-      version: 2
-    outputs:
-      path: terraform/foo-foo/outputs
-`
+            dry_run: true
+            repos:
+            - repository: https://gitlab.myinstance.com/some-gl-group/project_a
+              name: foo-foo
+              ref: d82b3cb292d91ec2eb26fc282d751555088819f3
+              project_path: prod/networking
+              delete: false
+              aws_creds:
+                path: terraform/creds/prod-account
+                version: 4
+              bucket: app-sre
+              region: us-east-1
+              bucket_path: tf-repo
+              tf_version: 1.5.7
+              require_fips: true
+              variables:
+                inputs:
+                  path: terraform/foo-foo/inputs
+                  version: 2
+                outputs:
+                  path: terraform/foo-foo/outputs
+		`
 		cfgPath := fmt.Sprintf("%s/%s", working, "good.yml")
-		os.WriteFile(cfgPath, []byte(raw), 0644)
+		os.WriteFile(cfgPath, []byte(dedent.Dedent(raw)), 0644)
 		defer os.Remove(cfgPath)
 
 		cfg, err := processConfig(cfgPath)
@@ -117,7 +118,7 @@ repos:
             ]
 }`
 		cfgPath := fmt.Sprintf("%s/%s", working, "good.json")
-		os.WriteFile(cfgPath, []byte(raw), 0644)
+		os.WriteFile(cfgPath, []byte(dedent.Dedent(raw)), 0644)
 		defer os.Remove(cfgPath)
 
 		cfg, err := processConfig(cfgPath)
@@ -166,19 +167,19 @@ repos:
 
 	t.Run("invalid yaml returns error", func(t *testing.T) {
 		raw := `
-dry_run: true
-repos: 
-repository: https://gitlab.myinstance.com/some-gl-group/project_a
-  name: foo-foo
-  ref: d82b3cb292d91ec2eb26fc282d751555088819f3
-  project_path: prod/networking
-  delete: false
-  secret:
-    path: terraform/creds/prod-acount
-    version: 4
-`
+			dry_run: true
+			repos: 
+			repository: https://gitlab.myinstance.com/some-gl-group/project_a
+			name: foo-foo
+			ref: d82b3cb292d91ec2eb26fc282d751555088819f3
+			project_path: prod/networking
+			delete: false
+			secret:
+				path: terraform/creds/prod-acount
+				version: 4
+		`
 		cfgPath := fmt.Sprintf("%s/%s", working, "bad.yml")
-		os.WriteFile(cfgPath, []byte(raw), 0644)
+		os.WriteFile(cfgPath, []byte(dedent.Dedent(raw)), 0644)
 		defer os.Remove(cfgPath)
 
 		_, err := processConfig(cfgPath)
@@ -186,4 +187,76 @@ repository: https://gitlab.myinstance.com/some-gl-group/project_a
 			t.Fatal(fmt.Errorf("Invalid payload should result in error"))
 		}
 	})
+}
+
+func TestMaskingOfVaultValues(t *testing.T) {
+	t.Run("values are masked correctly", func(t *testing.T) {
+		input := `
+			# aws_athena_database.vault:
+			resource "aws_athena_database" "vault" {
+				bucket        = "app-sre-athena-vault-output"
+				force_destroy = false
+				id            = "app_sre_vault"
+				name          = "app_sre_vault"
+				properties    = {}
+			}
+
+			# data.vault_generic_secret.bigsecret
+			data "vault_generic_secret" "bigsecret" {
+				data                  = {
+					"fake_sensitive_cred" = "OHNO"
+				}
+				data_json             = jsonencode(
+					{
+						fake_sensitive_cred = "OHNO"
+					}
+				)
+				id                    = "terraform-repo/input/athena/sensitivesecret"
+				lease_duration        = 0
+				lease_renewable       = false
+				lease_start_time      = "2024-08-01T19:44:57Z"
+				path                  = "terraform-repo/input/athena/sensitivesecret"
+				version               = 1
+				with_lease_start_time = true
+			}
+
+			# data.vault_generic_secret.bigsecret2
+			data "vault_generic_secret" "bigsecret2" {
+				data                  = {
+					"fake_sensitive_cred" = "UHOH"
+				}
+				data_json             = jsonencode(
+					{
+						fake_sensitive_cred = "UHOH"
+					}
+				)
+				id                    = "terraform-repo/input/athena/sensitivesecret2"
+				lease_duration        = 0
+				lease_renewable       = false
+				lease_start_time      = "2024-08-01T19:44:57Z"
+				path                  = "terraform-repo/input/athena/sensitivesecret2"
+				version               = 1
+				with_lease_start_time = true
+			}`
+
+		expected := `
+			# aws_athena_database.vault:
+			resource "aws_athena_database" "vault" {
+				bucket        = "app-sre-athena-vault-output"
+				force_destroy = false
+				id            = "app_sre_vault"
+				name          = "app_sre_vault"
+				properties    = {}
+			}
+
+			# data.vault_generic_secret.bigsecret
+			[REDACTED VAULT SECRET]
+
+			# data.vault_generic_secret.bigsecret2
+			[REDACTED VAULT SECRET]`
+
+		actual := MaskSensitiveStateValues(dedent.Dedent(input))
+		assert.Equal(t, dedent.Dedent(expected), actual)
+	})
+
 }
