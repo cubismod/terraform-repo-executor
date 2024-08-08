@@ -97,3 +97,12 @@ func MaskSensitiveStateValues(src string) string {
 	re := regexp.MustCompile(`(?sU)(data "vault_.+\n})`)
 	return re.ReplaceAllString(src, "[REDACTED VAULT SECRET]")
 }
+
+// RemoveUndeclaredWarnings takes in Terraform plan outputs and removes any warnings about undeclared variables
+// which happen due to partial backend initialization
+// tf doesn't give you an option to remove these warnings https://github.com/hashicorp/terraform/issues/22004
+// and we cannot use compact warnings due to limitations in the tfexec library so this is the next best option
+func RemoveUndeclaredWarnings(src string) string {
+	re := regexp.MustCompile(`Warning:.+undeclared variable.?\n+(?s).+(option|declared)\.`)
+	return re.ReplaceAllString(src, "")
+}

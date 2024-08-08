@@ -276,7 +276,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 	}
 
 	log.Printf("Output for %s\n", repo.Name)
-	log.Println(stdout.String())
+	log.Println(RemoveUndeclaredWarnings(stdout.String()))
 
 	if repo.RequireFips && dryRun {
 		err = e.fipsComplianceCheck(repo, planFile, tf)
