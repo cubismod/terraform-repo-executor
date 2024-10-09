@@ -145,7 +145,7 @@ func combineEnvVariables(creds TfCreds) map[string]string {
 		split := strings.Split(env, "=")
 		// ignore any TF_ prefixed variables as tfexec will error
 		// https://github.com/hashicorp/terraform-exec/blob/main/tfexec/cmd.go#L22-L39
-		if len(split) > 1 && strings.HasPrefix(split[0], "TF_") {
+		if len(split) > 1 && !strings.HasPrefix(split[0], "TF_") {
 			ret[split[0]] = split[1]
 		}
 	}
