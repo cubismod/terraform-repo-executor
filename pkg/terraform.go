@@ -201,7 +201,7 @@ func (e *Executor) showRaw(dir string, tfBinaryLocation string) (string, error) 
 
 // performs a terraform plan and then apply if not running in dry run mode
 // additionally captures any tf outputs if necessary
-func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.OutputMeta, error) {
+func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]string) (map[string]tfexec.OutputMeta, error) {
 	dir := fmt.Sprintf("%s/%s/%s", e.workdir, repo.Name, repo.Path)
 
 	// each repo can use a different version of the TF binary, specified in App Interface
@@ -224,6 +224,11 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool) (map[string]tfexec.Outp
 	var stdout, stderr, blackhole bytes.Buffer
 	tf.SetStdout(&stdout)
 	tf.SetStderr(&stderr)
+	// supply aws access key, secret key variables to the terraform executable for remote_backend_state
+	err = tf.SetEnv(envVars)
+	if err != nil {
+		return nil, err
+	}
 
 	planFile := fmt.Sprintf("%s/%s-plan", e.workdir, repo.Name)
 	var output map[string]tfexec.OutputMeta

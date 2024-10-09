@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "embed"
@@ -135,6 +136,25 @@ func Run(cfgPath,
 	return nil
 }
 
+// terraform-exec does not pass through all variables with tf.SetEnv https://github.com/hashicorp/terraform-exec/issues/337
+// so this function combines the existing os.Environ variable list with AWS access & secret key for usage in
+// terraform_remote_state datasources
+func combineEnvVariables(creds TfCreds) map[string]string {
+	ret := make(map[string]string)
+	for _, env := range os.Environ() {
+		split := strings.Split(env, "=")
+		// ignore any TF_ prefixed variables as tfexec will error
+		// https://github.com/hashicorp/terraform-exec/blob/main/tfexec/cmd.go#L22-L39
+		if len(split) > 1 && strings.HasPrefix(split[0], "TF_") {
+			ret[split[0]] = split[1]
+		}
+	}
+	ret["AWS_ACCESS_KEY_ID"] = creds.AccessKey
+	ret["AWS_SECRET_ACCESS_KEY"] = creds.SecretKey
+	ret["AWS_REGION"] = creds.Region
+	return ret
+}
+
 // performs all repo-specific operations
 func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) error {
 	err := repo.cloneRepo(e.workdir)
@@ -180,7 +200,9 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 		}
 	}
 
-	output, err := e.processTfPlan(repo, dryRun)
+	tfEnvVars := combineEnvVariables(backendCreds)
+
+	output, err := e.processTfPlan(repo, dryRun, tfEnvVars)
 	if err != nil {
 		return err
 	}
