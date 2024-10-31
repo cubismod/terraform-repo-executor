@@ -5,7 +5,7 @@ RUN make lint build
 
 FROM registry.access.redhat.com/ubi8/ubi:8.8 AS downloader
 WORKDIR /download
-ENV TENV_VERSION=1.2.0
+ENV TENV_VERSION=3.2.10
 
 RUN curl -sfL https://github.com/tofuutils/tenv/releases/download/v${TENV_VERSION}/tenv_v${TENV_VERSION}_Linux_x86_64.tar.gz \
     -o tenv.tar.gz \
@@ -19,7 +19,10 @@ ENV TFENV_ROOT=/usr/bin
 
 RUN tenv tf install 1.4.5 && \
     tenv tf install 1.4.7 && \
-    tenv tf install 1.5.7
+    tenv tf install 1.5.7 && \
+    tenv tf install 1.6.6 && \
+    tenv tf install 1.7.5 && \
+    tenv tf install 1.8.5
 
 RUN microdnf update -y && \
     microdnf install -y ca-certificates && \

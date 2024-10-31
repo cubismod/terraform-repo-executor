@@ -32,3 +32,27 @@ fileExistenceTests:
   uid: 0
   gid: 0
   isExecutableBy: other
+
+- name: terraform-1.6.6
+  path: /usr/bin/Terraform/1.6.6/terraform
+  shouldExist: true
+  permissions: -rwxr-xr-x
+  uid: 0
+  gid: 0
+  isExecutableBy: other
+
+- name: terraform-1.7.5
+  path: /usr/bin/Terraform/1.7.5/terraform
+  shouldExist: true
+  permissions: -rwxr-xr-x
+  uid: 0
+  gid: 0
+  isExecutableBy: other
+
+- name: terraform-1.8.5
+  path: /usr/bin/Terraform/1.8.5/terraform
+  shouldExist: true
+  permissions: -rwxr-xr-x
+  uid: 0
+  gid: 0
+  isExecutableBy: other
