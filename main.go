@@ -23,7 +23,7 @@ const (
 
 func main() {
 	cfgPath := getEnvOrDefault(ConfigFile, "/config.yaml")
-	workdir := getEnvOrDefault(WorkDir, "/tf-repo")
+	workdir := getEnvOrDefault(WorkDir, "/tmp/tf-repo")
 	vaultAddr := getEnvOrError(VaultAddr)
 	roleID := getEnvOrError(VaultRoleID)
 	secretID := getEnvOrError(VaultSecretID)
