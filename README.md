@@ -19,7 +19,7 @@ Terraform Repo executor takes input from a corresponding [Qontract Reconcile int
   * `GIT_EMAIL` - email to associate commits with
 * **Optional**
   * `CONFIG_FILE` - input/config file location, defaults to `/config.yaml`
-  * `WORKDIR` - working directory for tf operations, defaults to `/tf-repo`
+  * `WORKDIR` - working directory for tf operations, defaults to `/tmp/tf-repo`
   * `GIT_SSL_CAINFO` - allows you to supply [custom certificate authorities when dealing with self-signed gitlab instances](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslCAInfo), in this case this is the path to the certs
 
 ## AppRole Permissions

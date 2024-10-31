@@ -12,7 +12,8 @@ import (
 
 // Validates ablity to process accepted data formats
 func TestProcessConfig(t *testing.T) {
-	working, _ := os.Getwd()
+	working, _ := os.MkdirTemp(os.TempDir(), "test")
+	defer os.RemoveAll(working)
 
 	t.Run("valid yaml returns no error and actual equals expected", func(t *testing.T) {
 		raw := `
