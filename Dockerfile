@@ -27,7 +27,7 @@ COPY --from=builder /build/terraform-repo-executor  /usr/bin/terraform-repo-exec
 COPY --from=downloader /usr/bin/Terraform /usr/bin/Terraform
 
 RUN microdnf update -y && \
-    microdnf install -y ca-certificates && \
+    microdnf install -y ca-certificates git && \
     microdnf clean all
 
 ENTRYPOINT  [ "/usr/bin/terraform-repo-executor" ]
