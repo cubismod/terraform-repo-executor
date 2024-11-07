@@ -46,21 +46,6 @@ func executeCommand(dir, command string, args []string) (string, error) {
 	return stdout.String(), nil
 }
 
-// GetCABundle retrieves custom certificate authorities needed to process a Git repo and returns a byte slice or
-// an empty slice if no CAs are provided
-func GetCABundle() []byte {
-	bundlePath := os.Getenv("GIT_SSL_CAINFO")
-	if bundlePath != "" {
-		bundle, err := os.ReadFile(bundlePath)
-		if err != nil {
-			return nil
-		}
-
-		return bundle
-	}
-	return nil
-}
-
 func (r Repo) cloneRepo(workdir string) error {
 	// go-git doesn't create a new directory in the cloned dir so we have to create one ourselves
 	clonedDir := fmt.Sprintf("%s/%s", workdir, r.Name)
@@ -70,8 +55,7 @@ func (r Repo) cloneRepo(workdir string) error {
 	}
 
 	repo, err := git.PlainClone(clonedDir, false, &git.CloneOptions{
-		URL:      r.URL,
-		CABundle: GetCABundle(),
+		URL: r.URL,
 	})
 	if err != nil {
 		return err

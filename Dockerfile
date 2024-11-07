@@ -25,9 +25,10 @@ RUN ${TFENV_BIN} tf install 1.4.5 && \
 FROM registry.access.redhat.com/ubi9-minimal:9.4
 COPY --from=builder /build/terraform-repo-executor  /usr/bin/terraform-repo-executor
 COPY --from=downloader /usr/bin/Terraform /usr/bin/Terraform
+COPY entrypoint.sh /usr/bin
 
 RUN microdnf update -y && \
     microdnf install -y ca-certificates git && \
     microdnf clean all
 
-ENTRYPOINT  [ "/usr/bin/terraform-repo-executor" ]
+ENTRYPOINT  [ "/usr/bin/entrypoint.sh" ]
