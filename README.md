@@ -20,7 +20,15 @@ Terraform Repo executor takes input from a corresponding [Qontract Reconcile int
 * **Optional**
   * `CONFIG_FILE` - input/config file location, defaults to `/config.yaml`
   * `WORKDIR` - working directory for tf operations, defaults to `/tmp/tf-repo`
-  * `GIT_SSL_CAINFO` - allows you to supply [custom certificate authorities when dealing with self-signed gitlab instances](https://git-scm.com/docs/git-config#Documentation/git-config.txt-httpsslCAInfo), in this case this is the path to the certs
+  * `USE_CUSTOM_CA` - set to `true` for tf-repo to load custom certs into the container's trust store
+
+## Custom Certificate Authorities
+
+Custom certificate authorities can be used in cases like a self-signed Git instance. Mount those certificates to
+`/etc/pki/ca-trust/source/anchors/` within the container and then set the env variable `USE_CUSTOM_CA = true`.
+
+This will cause the executor to run the `update-ca-trust` command prior to running the application,
+thus loading the CAs into the root trust store and making them available to `git` commands.
 
 ## AppRole Permissions
 

@@ -231,9 +231,8 @@ func (e *Executor) commitAndPushState(repo Repo, state string) error {
 	defer os.RemoveAll(tmpdir)
 
 	gitRepo, err := git.PlainClone(tmpdir, false, &git.CloneOptions{
-		URL:      e.gitlabLogRepo,
-		Auth:     gitAuth,
-		CABundle: GetCABundle(),
+		URL:  e.gitlabLogRepo,
+		Auth: gitAuth,
 	})
 	if err != nil {
 		return fmt.Errorf("could not clone repo: '%s'", err)
@@ -282,7 +281,6 @@ func (e *Executor) commitAndPushState(repo Repo, state string) error {
 
 		err = gitRepo.Push(&git.PushOptions{
 			RemoteName: "origin",
-			CABundle:   GetCABundle(),
 			Auth:       gitAuth,
 		})
 		if err != nil {
