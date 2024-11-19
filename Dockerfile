@@ -2,7 +2,11 @@ FROM  registry.access.redhat.com/ubi9/go-toolset:1.21.13-2.1729776560 AS builder
 WORKDIR /build
 RUN git config --global --add safe.directory /build
 COPY . .
-RUN make lint build
+RUN make build
+
+FROM builder AS test
+
+RUN make lint vet
 
 FROM registry.access.redhat.com/ubi9:9.4 AS downloader
 WORKDIR /download
