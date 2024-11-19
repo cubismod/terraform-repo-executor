@@ -30,7 +30,7 @@ clean:
 ############
 
 .PHONY: build
-build: vet
+build:
 	CGO_ENABLED=0 GOOS=$(GOOS) go build -o $(NAME) .
 
 .PHONY: image
