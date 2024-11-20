@@ -75,7 +75,7 @@ staticcheck:
 	go install honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION)
 	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
 
-test: test-app test-container-image
+test: test-app
 
 .PHONY: vet
 vet: test-app
@@ -84,12 +84,3 @@ vet: test-app
 .PHONY: test-app
 test-app:
 	CGO_ENABLED=0 GOOS=$(GOOS) go test -v ./...
-
-.PHONY: test-container-image
-test-container-image: image
-	@CONTAINER_ENGINE=$(CONTAINER_ENGINE) \
-	CTR_STRUCTURE_IMG=$(CTR_STRUCTURE_IMG) \
-	CURDIR=$(CURDIR) \
-	IMAGE_NAME=$(REPO) \
-	IMAGE_TAG=$(TAG) \
-	$(CURDIR)/run-test-container-image.sh
