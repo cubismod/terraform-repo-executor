@@ -42,6 +42,15 @@ else
 endif
 	@$(CONTAINER_ENGINE) tag $(REPO):latest $(REPO):$(TAG)
 
+.PHONY: image-test
+image-test:
+ifeq ($(CONTAINER_ENGINE), podman)
+	@DOCKER_BUILDKIT=1 $(CONTAINER_ENGINE) build -t $(REPO)-test:latest . --progress=plain --target=test
+else
+	@DOCKER_BUILDKIT=1 $(CONTAINER_ENGINE) --config=$(DOCKER_CONF) build -t $(REPO)-test:latest . --progress=plain --target=test
+endif
+	@$(CONTAINER_ENGINE) tag $(REPO)-test:latest $(REPO)-test:$(TAG)
+
 .PHONY: image-push
 image-push:
 	$(CONTAINER_ENGINE) --config=$(DOCKER_CONF) push $(REPO):$(TAG)
