@@ -8,7 +8,7 @@ FROM builder AS test
 
 RUN make lint vet
 
-FROM registry.access.redhat.com/ubi9:9.5-1732804088 AS downloader
+FROM registry.access.redhat.com/ubi9:9.5-1736404036 AS downloader
 WORKDIR /download
 ENV TENV_VERSION=3.2.10
 
