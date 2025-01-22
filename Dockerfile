@@ -26,7 +26,7 @@ RUN ${TFENV_BIN} tf install 1.4.5 && \
     ${TFENV_BIN} tf install 1.7.5 && \
     ${TFENV_BIN} tf install 1.8.5
 
-FROM registry.access.redhat.com/ubi9-minimal:9.5-1731604394 AS prod
+FROM registry.access.redhat.com/ubi9-minimal:9.5-1736404155 AS prod
 COPY --from=builder /build/terraform-repo-executor  /usr/bin/terraform-repo-executor
 COPY --from=downloader /usr/bin/Terraform /usr/bin/Terraform
 COPY LICENSE /licenses/LICENSE
