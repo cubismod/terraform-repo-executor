@@ -1,4 +1,4 @@
-FROM  registry.access.redhat.com/ubi9/go-toolset:1.21.13-2.1729776560 AS builder
+FROM  registry.access.redhat.com/ubi9/go-toolset:1.21.13-2.1729776560@sha256:97e30a01caeece72ee967013e7c7af777ea4ee93840681ddcfe38a87eb4c084a AS builder
 WORKDIR /build
 RUN git config --global --add safe.directory /build
 COPY . .
@@ -8,7 +8,7 @@ FROM builder AS test
 
 RUN make lint vet
 
-FROM registry.access.redhat.com/ubi9:9.5-1739751568 AS downloader
+FROM registry.access.redhat.com/ubi9:9.5-1739751568@sha256:d342aa80781bf41c4c73485c41d8f1e2dbc40ee491633d9cafe787c361dd44ff AS downloader
 WORKDIR /download
 ENV TENV_VERSION=3.2.10
 
@@ -26,7 +26,7 @@ RUN ${TFENV_BIN} tf install 1.4.5 && \
     ${TFENV_BIN} tf install 1.7.5 && \
     ${TFENV_BIN} tf install 1.8.5
 
-FROM registry.access.redhat.com/ubi9-minimal:9.5-1739420147 AS prod
+FROM registry.access.redhat.com/ubi9-minimal:9.5-1739420147@sha256:14f14e03d68f7fd5f2b18a13478b6b127c341b346c86b6e0b886ed2b7573b8e0 AS prod
 COPY --from=builder /build/terraform-repo-executor  /usr/bin/terraform-repo-executor
 COPY --from=downloader /usr/bin/Terraform /usr/bin/Terraform
 COPY LICENSE /licenses/LICENSE
