@@ -6,7 +6,8 @@ metadata:
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "25"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "main"
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: terraform-repo-executor-main
@@ -29,7 +30,6 @@ spec:
   - name: target-stage
     value: prod
   pipelineRef:
-    resolver: git
     params:
     - name: url
       value: https://github.com/app-sre/shared-pipelines
@@ -37,7 +37,9 @@ spec:
       value: main
     - name: pathInRepo
       value: pipelines/multi-arch-build-pipeline.yaml
-  taskRunTemplate: {}
+    resolver: git
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-terraform-repo-executor-main
   workspaces:
   - name: workspace
     volumeClaimTemplate:
