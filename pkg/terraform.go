@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"text/template"
-	"time"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
 	"github.com/hashicorp/terraform-exec/tfexec"
@@ -200,22 +199,6 @@ func (e *Executor) showRaw(dir string, tfBinaryLocation string) (string, error) 
 	return out, err
 }
 
-// our jenkins instances are set to time out after 30 minutes of no logs to the console so this simply
-// prints out a log message once a minute that the apply/plan/destroy is still in progress so pipelines don't time out
-func reportProgress(done <-chan bool, repoName string) {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-done:
-			log.Printf("Terraform action completed for %s", repoName)
-			return
-		case <-ticker.C:
-			log.Printf("Terraform action is still running for %s...", repoName)
-		}
-	}
-}
-
 // performs a terraform plan and then apply if not running in dry run mode
 // additionally captures any tf outputs if necessary
 func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]string) (map[string]tfexec.OutputMeta, error) {
@@ -250,11 +233,8 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 	planFile := fmt.Sprintf("%s/%s-plan", e.workdir, repo.Name)
 	var output map[string]tfexec.OutputMeta
 
-	done := make(chan bool)
-
 	if dryRun {
 		log.Printf("Performing terraform plan for %s", repo.Name)
-		go reportProgress(done, repo.Name)
 		_, err = tf.Plan(
 			context.Background(),
 			tfexec.Destroy(repo.Delete),
@@ -264,13 +244,11 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 		// tf.exec.Destroy flag cannot be passed to tf.Apply in same fashion as above Plan() logic
 		if repo.Delete {
 			log.Printf("Performing terraform destroy for %s", repo.Name)
-			go reportProgress(done, repo.Name)
 			err = tf.Destroy(
 				context.Background(),
 			)
 		} else {
 			log.Printf("Performing terraform apply for %s", repo.Name)
-			go reportProgress(done, repo.Name)
 			err = tf.Apply(
 				context.Background(),
 			)
@@ -287,7 +265,6 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 		}
 
 	}
-	close(done)
 	if err != nil {
 		return nil, errors.New(stderr.String())
 	}
