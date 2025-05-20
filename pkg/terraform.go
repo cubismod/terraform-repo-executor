@@ -219,6 +219,8 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 	if err != nil {
 		return nil, err
 	}
+	tf.SetStdout(os.Stdout)
+	tf.SetStderr(os.Stderr)
 
 	var blackhole bytes.Buffer
 	// supply aws access key, secret key variables to the terraform executable for remote_backend_state
