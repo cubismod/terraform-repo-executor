@@ -238,6 +238,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 			context.Background(),
 			tfexec.Destroy(repo.Delete),
 			tfexec.Out(planFile), // this plan file will be useful to have in a later improvement as well
+			tfexec.Parallelism(e.tfParallelism),
 		)
 	} else {
 		// tf.exec.Destroy flag cannot be passed to tf.Apply in same fashion as above Plan() logic
@@ -245,11 +246,13 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 			log.Printf("Performing terraform destroy for %s", repo.Name)
 			err = tf.Destroy(
 				context.Background(),
+				tfexec.Parallelism(e.tfParallelism),
 			)
 		} else {
 			log.Printf("Performing terraform apply for %s", repo.Name)
 			err = tf.Apply(
 				context.Background(),
+				tfexec.Parallelism(e.tfParallelism),
 			)
 
 			if repo.TfVariables.Outputs.Path != "" {

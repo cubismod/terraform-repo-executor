@@ -4,6 +4,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/app-sre/terraform-repo-executor/pkg"
 )
@@ -19,6 +20,7 @@ const (
 	GitlabUsername = "GITLAB_USERNAME"
 	GitlabToken    = "GITLAB_TOKEN"
 	GitEmail       = "GIT_EMAIL"
+	TfParallelism  = "TF_PARALLELISM"
 )
 
 func main() {
@@ -31,8 +33,15 @@ func main() {
 	gitlabUsername := getEnvOrError(GitlabUsername)
 	gitlabToken := getEnvOrError(GitlabToken)
 	gitEmail := getEnvOrError(GitEmail)
+	tfParallelism := getEnvOrDefault(TfParallelism, "10")
 
-	err := pkg.Run(cfgPath,
+	tfParallelismInt, err := strconv.Atoi(tfParallelism)
+
+	if err != nil {
+		log.Fatal("Integer value required for `TF_PARALLELISM` environment variable")
+	}
+
+	err = pkg.Run(cfgPath,
 		workdir,
 		vaultAddr,
 		roleID,
@@ -41,6 +50,7 @@ func main() {
 		gitlabUsername,
 		gitlabToken,
 		gitEmail,
+		tfParallelismInt,
 	)
 	if err != nil {
 		log.Fatalln(err)
