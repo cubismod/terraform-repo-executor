@@ -3,7 +3,6 @@ package pkg
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -221,9 +220,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 		return nil, err
 	}
 
-	var stdout, stderr, blackhole bytes.Buffer
-	tf.SetStdout(&stdout)
-	tf.SetStderr(&stderr)
+	var blackhole bytes.Buffer
 	// supply aws access key, secret key variables to the terraform executable for remote_backend_state
 	err = tf.SetEnv(envVars)
 	if err != nil {
@@ -266,7 +263,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 
 	}
 	if err != nil {
-		return nil, errors.New(stderr.String())
+		return nil, err
 	}
 
 	if !dryRun {
@@ -279,9 +276,6 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 			log.Printf("Unable to commit state file to Git, error: %s", err)
 		}
 	}
-
-	log.Printf("Output for %s\n", repo.Name)
-	log.Println(RemoveUndeclaredWarnings(stdout.String()))
 
 	if repo.RequireFips && dryRun {
 		err = e.fipsComplianceCheck(repo, planFile, tf)
