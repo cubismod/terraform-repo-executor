@@ -200,9 +200,9 @@ func (e *Executor) showRaw(dir string, tfBinaryLocation string) (string, error) 
 }
 
 // our jenkins instances are set to time out after 30 minutes of no logs to the console so this simply
-// prints out a log message once a minute that the apply/plan/destroy is still in progress so pipelines don't time out
+// prints out a log message once every 10 min that the apply/plan/destroy is still in progress so pipelines don't time out
 func reportProgress(done <-chan bool, repoName string) {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
 		select {
