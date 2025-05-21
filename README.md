@@ -21,6 +21,7 @@ Terraform Repo executor takes input from a corresponding [Qontract Reconcile int
   * `CONFIG_FILE` - input/config file location, defaults to `/config.yaml`
   * `WORKDIR` - working directory for tf operations, defaults to `/tmp/tf-repo`
   * `USE_CUSTOM_CA` - set to `true` for tf-repo to load custom certs into the container's trust store
+  * `TF_PARALLELISM` - how many [concurrent operations for terraform to run](https://developer.hashicorp.com/terraform/cli/commands/plan#parallelism-n) (defaults to 10)
 
 ## Custom Certificate Authorities
 

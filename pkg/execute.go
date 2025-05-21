@@ -56,6 +56,7 @@ type Executor struct {
 	gitlabToken    string
 	gitEmail       string
 	mountVersions  map[string]string
+	tfParallelism  int
 }
 
 // StateVars are used to render the raw statefile in markdown
@@ -79,7 +80,7 @@ func Run(cfgPath,
 	gitlabLogRepo,
 	gitlabUsername,
 	gitlabToken,
-	gitEmail string) error {
+	gitEmail string, tfParallelism int) error {
 
 	cfg, err := processConfig(cfgPath)
 	if err != nil {
@@ -107,6 +108,7 @@ func Run(cfgPath,
 		gitlabToken:    gitlabToken,
 		gitEmail:       gitEmail,
 		mountVersions:  mountVersions,
+		tfParallelism:  tfParallelism,
 	}
 
 	errCounter := 0
