@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"gopkg.in/yaml.v3"
 )
 
@@ -46,7 +47,7 @@ func executeCommand(dir, command string, args []string) (string, error) {
 	return stdout.String(), nil
 }
 
-func (r Repo) cloneRepo(workdir string) error {
+func (r Repo) cloneRepo(workdir string, gitlabUsername string, gitlabToken string) error {
 	// go-git doesn't create a new directory in the cloned dir so we have to create one ourselves
 	clonedDir := fmt.Sprintf("%s/%s", workdir, r.Name)
 	err := os.Mkdir(clonedDir, FolderPerm)
@@ -56,6 +57,10 @@ func (r Repo) cloneRepo(workdir string) error {
 
 	repo, err := git.PlainClone(clonedDir, false, &git.CloneOptions{
 		URL: r.URL,
+		Auth: &http.BasicAuth{
+			Username: gitlabUsername,
+			Password: gitlabToken,
+		},
 	})
 	if err != nil {
 		return err

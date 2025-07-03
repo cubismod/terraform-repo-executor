@@ -159,7 +159,7 @@ func combineEnvVariables(creds TfCreds) map[string]string {
 
 // performs all repo-specific operations
 func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) error {
-	err := repo.cloneRepo(e.workdir)
+	err := repo.cloneRepo(e.workdir, e.gitlabUsername, e.gitlabToken)
 	if err != nil {
 		return err
 	}
