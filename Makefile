@@ -1,7 +1,7 @@
 NAME				:= terraform-repo-executor
 REPO				:= quay.io/app-sre/$(NAME)
-REVIVE_VERSION		:= v1.3.7
-STATICCHECK_VERSION	:= 2023.1.7
+REVIVE_VERSION		:= v1.11.0
+STATICCHECK_VERSION	:= 2025.1.1
 TAG					:= $(shell git rev-parse --short HEAD)
 
 PKGS				:= $(shell go list ./... | grep -v -E '/vendor/|/test')
