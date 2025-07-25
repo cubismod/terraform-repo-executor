@@ -1,4 +1,4 @@
-FROM  registry.redhat.io/ubi9/go-toolset:1.24.4-1753221510 AS builder
+FROM  registry.access.redhat.com/ubi9/go-toolset:1.24.4-1753221510 AS builder
 WORKDIR /build
 RUN git config --global --add safe.directory /build
 COPY . .
