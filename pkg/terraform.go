@@ -240,6 +240,9 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 			tfexec.Out(planFile), // this plan file will be useful to have in a later improvement as well
 			tfexec.Parallelism(e.tfParallelism),
 		)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		// tf.exec.Destroy flag cannot be passed to tf.Apply in same fashion as above Plan() logic
 		if repo.Delete {
