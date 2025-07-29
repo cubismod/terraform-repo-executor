@@ -195,7 +195,7 @@ func (e *Executor) showRaw(dir string, tfBinaryLocation string) (string, error) 
 	if err != nil {
 		return "", err
 	}
-	return out, err
+	return out, nil
 }
 
 // performs a terraform plan and then apply if not running in dry run mode
@@ -248,12 +248,18 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 				context.Background(),
 				tfexec.Parallelism(e.tfParallelism),
 			)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			log.Printf("Performing terraform apply for %s", repo.Name)
 			err = tf.Apply(
 				context.Background(),
 				tfexec.Parallelism(e.tfParallelism),
 			)
+			if err != nil {
+				return nil, err
+			}
 
 			if repo.TfVariables.Outputs.Path != "" {
 				log.Printf("Capturing Output values to save to %s in Vault", repo.TfVariables.Outputs.Path)
@@ -263,14 +269,13 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 				output, err = tf.Output(
 					context.Background(),
 				)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 
 	}
-	if err != nil {
-		return nil, err
-	}
-
 	if !dryRun {
 		rawState, err := e.showRaw(dir, tfBinaryLocation)
 		if err != nil {

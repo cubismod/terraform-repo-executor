@@ -66,7 +66,7 @@ func InitVaultClient(addr, roleID, secretID string) (*vault.Client, error) {
 		return nil, err
 	}
 	if secret == nil || secret.Auth == nil {
-		return nil, err
+		return nil, fmt.Errorf("authentication failed: no valid auth token received")
 	}
 
 	client.SetToken(secret.Auth.ClientToken)
