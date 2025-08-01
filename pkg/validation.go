@@ -10,8 +10,9 @@ import (
 	"github.com/hashicorp/hcl/v2/hclparse"
 )
 
-const TerraformRepoTemplateURL = "https://gitlab.cee.redhat.com/app-sre/terraform-repo-template"
+const terraformRepoTemplateURL = "https://gitlab.cee.redhat.com/app-sre/terraform-repo-template"
 
+// ValidationError represents a validation failure
 type ValidationError struct {
 	Message string
 	File    string
@@ -24,11 +25,13 @@ func (ve ValidationError) Error() string {
 	return ve.Message
 }
 
+// ValidationResult holds the results of terraform provider validation
 type ValidationResult struct {
 	Valid  bool
 	Errors []ValidationError
 }
 
+// RequiredVariable represents a variable that must be present
 type RequiredVariable struct {
 	Name string
 }
@@ -218,20 +221,20 @@ func validateRequirements(files []fileWithPath, config ValidationConfig) []Valid
 
 	if !foundTerraformBlock {
 		errors = append(errors, ValidationError{
-			Message: fmt.Sprintf("No terraform block found - required for backend and provider configuration. See %s for the expected structure", TerraformRepoTemplateURL),
+			Message: fmt.Sprintf("No terraform block found - required for backend and provider configuration. See %s for the expected structure", terraformRepoTemplateURL),
 		})
 	}
 
 	if !foundS3Backend {
 		errors = append(errors, ValidationError{
-			Message: fmt.Sprintf(`S3 backend not found - terraform block must include: backend "s3" {}. See %s for the expected structure`, TerraformRepoTemplateURL),
+			Message: fmt.Sprintf(`S3 backend not found - terraform block must include: backend "s3" {}. See %s for the expected structure`, terraformRepoTemplateURL),
 		})
 	}
 
 	for _, reqVar := range config.RequiredVariables {
 		if !foundVariables[reqVar.Name] {
 			errors = append(errors, ValidationError{
-				Message: fmt.Sprintf("Required variable '%s' not found - needed by tf-repo automation. See %s for the expected structure", reqVar.Name, TerraformRepoTemplateURL),
+				Message: fmt.Sprintf("Required variable '%s' not found - needed by tf-repo automation. See %s for the expected structure", reqVar.Name, terraformRepoTemplateURL),
 			})
 		}
 	}
@@ -239,7 +242,7 @@ func validateRequirements(files []fileWithPath, config ValidationConfig) []Valid
 	for _, reqProvider := range config.RequiredProviders {
 		if !foundProviders[reqProvider.LocalName] {
 			errors = append(errors, ValidationError{
-				Message: fmt.Sprintf("Required provider '%s' not found in required_providers block - source should be '%s'. See %s for the expected structure", reqProvider.LocalName, reqProvider.Source, TerraformRepoTemplateURL),
+				Message: fmt.Sprintf("Required provider '%s' not found in required_providers block - source should be '%s'. See %s for the expected structure", reqProvider.LocalName, reqProvider.Source, terraformRepoTemplateURL),
 			})
 		}
 	}

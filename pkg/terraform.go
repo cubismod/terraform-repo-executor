@@ -244,7 +244,7 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 			for _, err := range validationResult.Errors {
 				errorMsg.WriteString(fmt.Sprintf("\n  - %s", err.Error()))
 			}
-			return nil, fmt.Errorf(errorMsg.String())
+			return nil, fmt.Errorf("terraform provider validation failed: %s", errorMsg.String())
 		}
 		log.Printf("Terraform provider validation passed for %s", repo.Name)
 
