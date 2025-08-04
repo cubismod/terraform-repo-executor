@@ -148,17 +148,17 @@ func findTerraformFiles(dir string) ([]string, error) {
 }
 
 // validateRequirements checks that all required elements are present
+// https://hcl.readthedocs.io/en/latest/go_decoding_lowlevel.html provides a good example of how to parse HCL files
 func validateRequirements(files []fileWithPath, config ValidationConfig) []ValidationError {
 	var errors []ValidationError
 
-	// Track what we've found
 	foundVariables := make(map[string]bool)
 	foundProviders := make(map[string]bool)
 	foundS3Backend := false
 	foundTerraformBlock := false
 
-	// Parse each file
 	for _, fileInfo := range files {
+		// we need to setup a schema so that we're only parsing the relevant blocks of the config
 		content, _, diags := fileInfo.file.Body.PartialContent(&hcl.BodySchema{
 			Blocks: []hcl.BlockHeaderSchema{
 				{Type: "terraform"},
@@ -175,7 +175,7 @@ func validateRequirements(files []fileWithPath, config ValidationConfig) []Valid
 			continue
 		}
 
-		// Check terraform blocks
+		// with our schema setup, we can now parse the blocks of the config
 		for _, block := range content.Blocks {
 			switch block.Type {
 			case "terraform":
@@ -186,18 +186,15 @@ func validateRequirements(files []fileWithPath, config ValidationConfig) []Valid
 						{Type: "required_providers"},
 					},
 				})
-
-				// Check for S3 backend
-				for _, backendBlock := range terraformContent.Blocks {
-					if backendBlock.Type == "backend" && len(backendBlock.Labels) > 0 && backendBlock.Labels[0] == "s3" {
+				for _, block := range terraformContent.Blocks {
+					// check for the s3 backend
+					if block.Type == "backend" && len(block.Labels) > 0 && block.Labels[0] == "s3" {
+						// the use of 0 indexing is okay here since the backend block can only have one label
 						foundS3Backend = true
 					}
-				}
-
-				// Check required_providers
-				for _, reqProvidersBlock := range terraformContent.Blocks {
-					if reqProvidersBlock.Type == "required_providers" {
-						attrs, _ := reqProvidersBlock.Body.JustAttributes()
+					// check for the required_providers block
+					if block.Type == "required_providers" {
+						attrs, _ := block.Body.JustAttributes()
 						for _, provider := range config.RequiredProviders {
 							if _, exists := attrs[provider.LocalName]; exists {
 								foundProviders[provider.LocalName] = true
@@ -205,7 +202,6 @@ func validateRequirements(files []fileWithPath, config ValidationConfig) []Valid
 						}
 					}
 				}
-
 			case "variable":
 				if len(block.Labels) > 0 {
 					foundVariables[block.Labels[0]] = true
