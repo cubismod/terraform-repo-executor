@@ -212,6 +212,23 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 		return nil, err
 	}
 
+	// validate before initializing
+	if dryRun {
+		// Provider validation aims to prevent common errors like missing variables or not declaring the S3 backend
+		// it only runs in dry run mode since app-interface gates the apply step
+		log.Printf("Validating terraform provider configuration for %s", repo.Name)
+		validationResult := ValidateTerraformRepo(dir, GetDefaultValidationConfig())
+		if !validationResult.Valid {
+			var errorMsg strings.Builder
+			errorMsg.WriteString("Terraform provider validation failed:")
+			for _, err := range validationResult.Errors {
+				errorMsg.WriteString(fmt.Sprintf("\n  - %s", err.Error()))
+			}
+			return nil, fmt.Errorf("terraform provider validation failed: %s", errorMsg.String())
+		}
+		log.Printf("Terraform provider validation passed for %s", repo.Name)
+	}
+
 	log.Printf("Initializing terraform config for %s\n", repo.Name)
 	err = tf.Init(
 		context.Background(),
@@ -234,20 +251,6 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 	var output map[string]tfexec.OutputMeta
 
 	if dryRun {
-		// Provider validation aims to prevent common errors like missing variables or not declaring the S3 backend
-		// it only runs in dry run mode since app-interface gates the apply step
-		log.Printf("Validating terraform provider configuration for %s", repo.Name)
-		validationResult := ValidateTerraformRepo(dir, GetDefaultValidationConfig())
-		if !validationResult.Valid {
-			var errorMsg strings.Builder
-			errorMsg.WriteString("Terraform provider validation failed:")
-			for _, err := range validationResult.Errors {
-				errorMsg.WriteString(fmt.Sprintf("\n  - %s", err.Error()))
-			}
-			return nil, fmt.Errorf("terraform provider validation failed: %s", errorMsg.String())
-		}
-		log.Printf("Terraform provider validation passed for %s", repo.Name)
-
 		log.Printf("Performing terraform plan for %s", repo.Name)
 		_, err = tf.Plan(
 			context.Background(),
