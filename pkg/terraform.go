@@ -3,6 +3,7 @@ package pkg
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -19,6 +20,11 @@ type TfCreds struct {
 	Region    string
 	Key       string // set when initializing backend
 	Bucket    string
+}
+
+// TerraformExecutor interface wraps terraform functionality for testing & mocking
+type TerraformExecutor interface {
+	StatePull(ctx context.Context, opts ...tfexec.StatePullOption) (string, error)
 }
 
 // standardized AppSRE terraform secret keys
@@ -188,6 +194,38 @@ func (e *Executor) fipsComplianceCheck(repo Repo, planFile string, tf *tfexec.Te
 	return nil
 }
 
+// validateS3Backend ensures that the repo is using an S3 backend by pulling and examining the statefile after initializing the repo
+func (e *Executor) validateS3Backend(tf TerraformExecutor, repo Repo) error {
+	state, err := tf.StatePull(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to pull terraform state for repo '%s': %w", repo.Name, err)
+	}
+
+	if len(state) == 0 {
+		return fmt.Errorf("repository '%s' has empty terraform state, which indicates no S3 backend is configured", repo.Name)
+	}
+
+	var stateData map[string]interface{}
+	if err := json.Unmarshal([]byte(state), &stateData); err != nil {
+		return fmt.Errorf("failed to parse terraform state for repo '%s': %w", repo.Name, err)
+	}
+
+	backend, ok := stateData["backend"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("repository '%s' does not have backend configuration in terraform state", repo.Name)
+	}
+
+	backendType, ok := backend["type"].(string)
+	if !ok {
+		return fmt.Errorf("repository '%s' has invalid backend type in terraform state", repo.Name)
+	}
+
+	if backendType != "s3" {
+		return fmt.Errorf("repository '%s' is using backend type '%s' instead of required S3 backend", repo.Name, backendType)
+	}
+	return nil
+}
+
 // performs a terraform show without the `-json` flag to workaround the fact that the tfexec package
 // only supports outputting the state as JSON which exposes sensitive values
 func (e *Executor) showRaw(dir string, tfBinaryLocation string) (string, error) {
@@ -219,6 +257,13 @@ func (e *Executor) processTfPlan(repo Repo, dryRun bool, envVars map[string]stri
 	if err != nil {
 		return nil, err
 	}
+
+	// Validate that S3 backend is configured
+	err = e.validateS3Backend(tf, repo)
+	if err != nil {
+		return nil, err
+	}
+
 	tf.SetStdout(os.Stdout)
 	tf.SetStderr(os.Stderr)
 
