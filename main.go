@@ -2,9 +2,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/app-sre/terraform-repo-executor/pkg"
 )
@@ -24,6 +26,11 @@ const (
 )
 
 func main() {
+	// Generate unique session ID for Vector log tracking
+	sessionID := fmt.Sprintf("session-%d", time.Now().UnixNano())
+
+	log.Printf("Starting terraform-repo-executor [%s]", sessionID)
+
 	cfgPath := getEnvOrDefault(ConfigFile, "/config.yaml")
 	workdir := getEnvOrDefault(WorkDir, "/tmp/tf-repo")
 	vaultAddr := getEnvOrError(VaultAddr)
@@ -36,7 +43,6 @@ func main() {
 	tfParallelism := getEnvOrDefault(TfParallelism, "10")
 
 	tfParallelismInt, err := strconv.Atoi(tfParallelism)
-
 	if err != nil {
 		log.Fatal("Integer value required for `TF_PARALLELISM` environment variable")
 	}
@@ -52,9 +58,15 @@ func main() {
 		gitEmail,
 		tfParallelismInt,
 	)
+
+	// sleep to let vector flush logs
+	time.Sleep(2 * time.Second)
+
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Error: %v [%s]", err, sessionID)
+		os.Exit(1)
 	}
+	log.Printf("Completed successfully [%s]", sessionID)
 	os.Exit(0)
 }
 

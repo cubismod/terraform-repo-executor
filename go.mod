@@ -1,6 +1,6 @@
 module github.com/app-sre/terraform-repo-executor
 
-go 1.23.9
+go 1.24.6
 
 require (
 	github.com/go-git/go-git/v5 v5.16.2

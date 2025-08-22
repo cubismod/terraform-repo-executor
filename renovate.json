@@ -4,5 +4,13 @@
   "gomod": {
     "enabled": true
   },
-  "postUpdateOptions": ["gomodTidy"]
+  "postUpdateOptions": ["gomodTidy"],
+  "packageRules": [
+    {
+      "matchPackageNames": ["golang"],
+      "matchFileNames": [".tool-versions", "go.mod", "Dockerfile"],
+      "groupName": "golang",
+      "groupSlug": "golang"
+    }
+  ]
 }

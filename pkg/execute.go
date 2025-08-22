@@ -112,7 +112,9 @@ func Run(cfgPath,
 	}
 
 	errCounter := 0
-	for _, repo := range cfg.Repos {
+	for i, repo := range cfg.Repos {
+		log.Printf("Processing repository %s (%d/%d)", repo.Name, i+1, len(cfg.Repos))
+
 		// there needs to be a clean working directory for each repository
 		err := os.Mkdir(workdir, FolderPerm)
 		if err != nil {
