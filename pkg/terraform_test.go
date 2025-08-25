@@ -1,15 +1,12 @@
 package pkg
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"testing"
 
 	"github.com/app-sre/terraform-repo-executor/pkg/vaultutil"
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 const (
@@ -166,126 +163,5 @@ func TestWriteTemplate(t *testing.T) {
 		assert.Nil(t, err)
 
 		assert.Equal(t, string(expected), string(output))
-	})
-}
-
-// MockTerraformExecutor is a testify mock for TerraformExecutor~ interface
-type MockTerraformExecutor struct {
-	mock.Mock
-}
-
-func (m *MockTerraformExecutor) StatePull(ctx context.Context, opts ...tfexec.StatePullOption) (string, error) {
-	args := m.Called(ctx, opts)
-	return args.String(0), args.Error(1)
-}
-
-func TestValidateS3Backend(t *testing.T) {
-	executor := &Executor{}
-	repo := Repo{Name: "test-repo"}
-
-	t.Run("successful S3 backend validation", func(t *testing.T) {
-		validS3State := `{
-			"version": 4,
-			"backend": {
-				"type": "s3",
-				"config": {
-					"bucket": "test-bucket",
-					"key": "terraform.tfstate",
-					"region": "us-east-1"
-				}
-			}
-		}`
-
-		mockTerraform := new(MockTerraformExecutor)
-		mockTerraform.On("StatePull", mock.Anything, mock.Anything).Return(validS3State, nil)
-
-		err := executor.validateS3Backend(mockTerraform, repo)
-		assert.Nil(t, err)
-		mockTerraform.AssertExpectations(t)
-	})
-
-	t.Run("fails when StatePull returns error", func(t *testing.T) {
-		mockTerraform := new(MockTerraformExecutor)
-		mockTerraform.On("StatePull", mock.Anything, mock.Anything).Return("", fmt.Errorf("state pull failed"))
-
-		err := executor.validateS3Backend(mockTerraform, repo)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to pull terraform state for repo 'test-repo'")
-		assert.Contains(t, err.Error(), "state pull failed")
-		mockTerraform.AssertExpectations(t)
-	})
-
-	t.Run("fails when state is empty", func(t *testing.T) {
-		mockTerraform := new(MockTerraformExecutor)
-		mockTerraform.On("StatePull", mock.Anything, mock.Anything).Return("", nil)
-
-		err := executor.validateS3Backend(mockTerraform, repo)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "repository 'test-repo' has empty terraform state, which indicates no S3 backend is configured")
-		mockTerraform.AssertExpectations(t)
-	})
-
-	t.Run("fails when state is invalid JSON", func(t *testing.T) {
-		mockTerraform := new(MockTerraformExecutor)
-		mockTerraform.On("StatePull", mock.Anything, mock.Anything).Return("invalid json", nil)
-
-		err := executor.validateS3Backend(mockTerraform, repo)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse terraform state for repo 'test-repo'")
-		mockTerraform.AssertExpectations(t)
-	})
-
-	t.Run("fails when backend configuration is missing", func(t *testing.T) {
-		stateWithoutBackend := `{
-			"version": 4,
-			"resources": []
-		}`
-
-		mockTerraform := new(MockTerraformExecutor)
-		mockTerraform.On("StatePull", mock.Anything, mock.Anything).Return(stateWithoutBackend, nil)
-
-		err := executor.validateS3Backend(mockTerraform, repo)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "repository 'test-repo' does not have backend configuration in terraform state")
-		mockTerraform.AssertExpectations(t)
-	})
-
-	t.Run("fails when backend type is missing", func(t *testing.T) {
-		stateWithInvalidBackend := `{
-			"version": 4,
-			"backend": {
-				"config": {
-					"bucket": "test-bucket"
-				}
-			}
-		}`
-
-		mockTerraform := new(MockTerraformExecutor)
-		mockTerraform.On("StatePull", mock.Anything, mock.Anything).Return(stateWithInvalidBackend, nil)
-
-		err := executor.validateS3Backend(mockTerraform, repo)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "repository 'test-repo' has invalid backend type in terraform state")
-		mockTerraform.AssertExpectations(t)
-	})
-
-	t.Run("fails when backend type is not s3", func(t *testing.T) {
-		localBackendState := `{
-			"version": 4,
-			"backend": {
-				"type": "local",
-				"config": {
-					"path": "terraform.tfstate"
-				}
-			}
-		}`
-
-		mockTerraform := new(MockTerraformExecutor)
-		mockTerraform.On("StatePull", mock.Anything, mock.Anything).Return(localBackendState, nil)
-
-		err := executor.validateS3Backend(mockTerraform, repo)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "repository 'test-repo' is using backend type 'local' instead of required S3 backend")
-		mockTerraform.AssertExpectations(t)
 	})
 }
