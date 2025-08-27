@@ -193,10 +193,23 @@ func (e *Executor) execute(repo Repo, vaultClient *vault.Client, dryRun bool) er
 
 	if repo.TfVariables.Inputs.Path != "" {
 		// extract kv pairs from vault for inputs and write them to a file for terraform usage
+		log.Printf("Loading input secrets from Vault at path: %s", repo.TfVariables.Inputs.Path)
+		if repo.TfVariables.Inputs.Version != 0 {
+			log.Printf("Using specific version: %d", repo.TfVariables.Inputs.Version)
+		} else {
+			log.Printf("Using latest version")
+		}
+		
 		inputSecret, err := vaultutil.GetVaultTfSecret(vaultClient, repo.TfVariables.Inputs, e.mountVersions)
 		if err != nil {
 			return err
 		}
+
+		keys := make([]string, 0, len(inputSecret))
+		for k := range inputSecret {
+			keys = append(keys, k)
+		}
+		log.Printf("Loaded input secret keys: %v", keys)
 
 		err = e.generateInputVarsFile(inputSecret, repo)
 		if err != nil {
